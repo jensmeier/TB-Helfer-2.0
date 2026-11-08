@@ -1,0 +1,1717 @@
+[
+  {
+    "file": "audit/server/server/tbserver/admin_purge.py",
+    "line": 87,
+    "method": "get",
+    "path": "/survey-test-data",
+    "function": "survey_test_data_preview"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_purge.py",
+    "line": 223,
+    "method": "delete",
+    "path": "/survey-test-data",
+    "function": "purge_survey_test_data"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_purge.py",
+    "line": 235,
+    "method": "delete",
+    "path": "/releases/{release_id}",
+    "function": "purge_release_draft"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_purge.py",
+    "line": 277,
+    "method": "delete",
+    "path": "/devices/{device_id}",
+    "function": "purge_device"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_purge.py",
+    "line": 316,
+    "method": "delete",
+    "path": "/worksites/{worksite_id}",
+    "function": "purge_worksite"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_purge.py",
+    "line": 369,
+    "method": "delete",
+    "path": "/users/{user_id}",
+    "function": "purge_user"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_purge.py",
+    "line": 455,
+    "method": "delete",
+    "path": "/companies/{company_id}",
+    "function": "purge_company"
+  },
+  {
+    "file": "audit/server/server/tbserver/company.py",
+    "line": 213,
+    "method": "get",
+    "path": "/company/profile",
+    "function": "company_profile"
+  },
+  {
+    "file": "audit/server/server/tbserver/company.py",
+    "line": 223,
+    "method": "get",
+    "path": "/company/profile/logo",
+    "function": "company_logo"
+  },
+  {
+    "file": "audit/server/server/tbserver/company.py",
+    "line": 244,
+    "method": "get",
+    "path": "/company/profile/pdf-logo-layout",
+    "function": "company_pdf_logo_layout"
+  },
+  {
+    "file": "audit/server/server/tbserver/company.py",
+    "line": 254,
+    "method": "put",
+    "path": "/company/profile/pdf-logo-layout",
+    "function": "update_company_pdf_logo_layout"
+  },
+  {
+    "file": "audit/server/server/tbserver/company.py",
+    "line": 295,
+    "method": "get",
+    "path": "/admin/companies/{company_id}/logo",
+    "function": "admin_company_logo"
+  },
+  {
+    "file": "audit/server/server/tbserver/company.py",
+    "line": 316,
+    "method": "get",
+    "path": "/admin/companies/{company_id}/pdf-preview",
+    "function": "admin_company_pdf_preview"
+  },
+  {
+    "file": "audit/server/server/tbserver/company.py",
+    "line": 367,
+    "method": "put",
+    "path": "/admin/companies/{company_id}/pdf-logo-layout",
+    "function": "admin_update_company_pdf_logo_layout"
+  },
+  {
+    "file": "audit/server/server/tbserver/company.py",
+    "line": 407,
+    "method": "get",
+    "path": "/admin/companies/{company_id}/profile",
+    "function": "admin_company_profile"
+  },
+  {
+    "file": "audit/server/server/tbserver/company.py",
+    "line": 420,
+    "method": "put",
+    "path": "/admin/companies/{company_id}/profile",
+    "function": "admin_update_company_profile"
+  },
+  {
+    "file": "audit/server/server/tbserver/company.py",
+    "line": 481,
+    "method": "put",
+    "path": "/admin/companies/{company_id}/logo",
+    "function": "admin_upload_company_logo"
+  },
+  {
+    "file": "audit/server/server/tbserver/company.py",
+    "line": 595,
+    "method": "delete",
+    "path": "/admin/companies/{company_id}/logo",
+    "function": "admin_delete_company_logo"
+  },
+  {
+    "file": "audit/server/server/tbserver/releases.py",
+    "line": 187,
+    "method": "get",
+    "path": "/client-compatibility",
+    "function": "client_compatibility"
+  },
+  {
+    "file": "audit/server/server/tbserver/releases.py",
+    "line": 240,
+    "method": "get",
+    "path": "/releases/{platform}/latest",
+    "function": "latest_release"
+  },
+  {
+    "file": "audit/server/server/tbserver/releases.py",
+    "line": 254,
+    "method": "get",
+    "path": "/releases/{release_id}/download",
+    "function": "download_release_binary"
+  },
+  {
+    "file": "audit/server/server/tbserver/releases.py",
+    "line": 273,
+    "method": "get",
+    "path": "/admin/releases/{release_id}/binary",
+    "function": "admin_download_release_binary"
+  },
+  {
+    "file": "audit/server/server/tbserver/releases.py",
+    "line": 293,
+    "method": "put",
+    "path": "/admin/releases/{release_id}/binary",
+    "function": "admin_upload_release_binary"
+  },
+  {
+    "file": "audit/server/server/tbserver/releases.py",
+    "line": 404,
+    "method": "delete",
+    "path": "/admin/releases/{release_id}/binary",
+    "function": "admin_delete_release_binary"
+  },
+  {
+    "file": "audit/server/server/tbserver/releases.py",
+    "line": 441,
+    "method": "get",
+    "path": "/admin/releases",
+    "function": "admin_list_releases"
+  },
+  {
+    "file": "audit/server/server/tbserver/releases.py",
+    "line": 479,
+    "method": "post",
+    "path": "/admin/releases",
+    "function": "admin_create_release"
+  },
+  {
+    "file": "audit/server/server/tbserver/releases.py",
+    "line": 520,
+    "method": "patch",
+    "path": "/admin/releases/{release_id}",
+    "function": "admin_update_release"
+  },
+  {
+    "file": "audit/server/server/tbserver/releases.py",
+    "line": 567,
+    "method": "post",
+    "path": "/admin/releases/{release_id}/publish",
+    "function": "admin_publish_release"
+  },
+  {
+    "file": "audit/server/server/tbserver/releases.py",
+    "line": 601,
+    "method": "post",
+    "path": "/admin/releases/{release_id}/retire",
+    "function": "admin_retire_release"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_originals.py",
+    "line": 55,
+    "method": "get",
+    "path": "/survey-originals",
+    "function": "list_survey_originals"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_originals.py",
+    "line": 97,
+    "method": "get",
+    "path": "/reference/survey-originals",
+    "function": "list_global_reference_originals"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_originals.py",
+    "line": 171,
+    "method": "get",
+    "path": "/reference/survey-originals/{original_id}/parsed",
+    "function": "get_global_reference_parsed"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_originals.py",
+    "line": 198,
+    "method": "post",
+    "path": "/survey-originals/from-file",
+    "function": "import_survey_original_from_file"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_originals.py",
+    "line": 375,
+    "method": "get",
+    "path": "/survey-originals/{original_id}",
+    "function": "get_survey_original"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_originals.py",
+    "line": 388,
+    "method": "get",
+    "path": "/survey-originals/{original_id}/content",
+    "function": "download_survey_original"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 66,
+    "method": "get",
+    "path": "/admin/v1/login",
+    "function": "admin_login_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 74,
+    "method": "get",
+    "path": "/portal/v1/login",
+    "function": "portal_login_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 82,
+    "method": "get",
+    "path": "/portal/v1/activate",
+    "function": "portal_activate_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 90,
+    "method": "get",
+    "path": "/portal/v1/settings",
+    "function": "portal_home"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 104,
+    "method": "get",
+    "path": "/admin/v1",
+    "function": "admin_v1_root"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 118,
+    "method": "get",
+    "path": "/admin/v1/routes",
+    "function": "admin_routes_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 129,
+    "method": "get",
+    "path": "/admin/v1/stations",
+    "function": "admin_stations_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 140,
+    "method": "get",
+    "path": "/admin/v1/catalog-history",
+    "function": "admin_catalog_history_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 166,
+    "method": "get",
+    "path": "/admin/v1/releases",
+    "function": "admin_releases_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 177,
+    "method": "get",
+    "path": "/admin/v1/survey-overview",
+    "function": "admin_survey_overview_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 188,
+    "method": "get",
+    "path": "/admin/v1/survey-import",
+    "function": "admin_survey_import_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 233,
+    "method": "get",
+    "path": "/admin/v1/system",
+    "function": "admin_system_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 244,
+    "method": "get",
+    "path": "/admin/v1/users",
+    "function": "admin_users_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 252,
+    "method": "get",
+    "path": "/admin/v1/users/{user_id}/activation-card",
+    "function": "admin_user_activation_card_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 293,
+    "method": "get",
+    "path": "/admin/v1/devices",
+    "function": "admin_devices_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 301,
+    "method": "get",
+    "path": "/admin/v1/companies",
+    "function": "admin_companies_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 341,
+    "method": "get",
+    "path": "/portal/v1/worksites",
+    "function": "portal_worksites_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 352,
+    "method": "get",
+    "path": "/portal/v1/invitations/redeem",
+    "function": "portal_invitation_redeem_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 363,
+    "method": "get",
+    "path": "/portal/v1/worksites/{worksite_id}",
+    "function": "portal_worksite_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 380,
+    "method": "get",
+    "path": "/portal/v1/btbs/{btb_id}",
+    "function": "portal_btb_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 399,
+    "method": "get",
+    "path": "/admin/v1/worksites",
+    "function": "admin_worksites_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 407,
+    "method": "get",
+    "path": "/admin/v1/worksites/{worksite_id}",
+    "function": "admin_worksite_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 416,
+    "method": "get",
+    "path": "/admin/v1/btbs/{btb_id}",
+    "function": "admin_btb_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 425,
+    "method": "get",
+    "path": "/admin/v1/companies/{company_id}/branding",
+    "function": "admin_company_branding_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 551,
+    "method": "get",
+    "path": "/portal/v1",
+    "function": "portal_start"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 555,
+    "method": "get",
+    "path": "/portal/v1/account",
+    "function": "portal_account_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_web.py",
+    "line": 560,
+    "method": "get",
+    "path": "/portal/v1/pictures",
+    "function": "portal_pictures_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_gra_jumps.py",
+    "line": 319,
+    "method": "post",
+    "path": "/survey-sections/{dataset_id}/rebuild-gra-jumps",
+    "function": "rebuild_gra_jumps"
+  },
+  {
+    "file": "audit/server/server/tbserver/system_admin.py",
+    "line": 60,
+    "method": "get",
+    "path": "/recovery/automatic",
+    "function": "automatic_recovery_status"
+  },
+  {
+    "file": "audit/server/server/tbserver/system_admin.py",
+    "line": 82,
+    "method": "post",
+    "path": "/recovery/execute",
+    "function": "execute_automatic_recovery"
+  },
+  {
+    "file": "audit/server/server/tbserver/system_admin.py",
+    "line": 110,
+    "method": "get",
+    "path": "/recovery",
+    "function": "recovery_status"
+  },
+  {
+    "file": "audit/server/server/tbserver/system_admin.py",
+    "line": 127,
+    "method": "post",
+    "path": "/recovery/prepare",
+    "function": "enqueue_recovery"
+  },
+  {
+    "file": "audit/server/server/tbserver/system_admin.py",
+    "line": 481,
+    "method": "get",
+    "path": "/status",
+    "function": "admin_system_status"
+  },
+  {
+    "file": "audit/server/server/tbserver/system_admin.py",
+    "line": 913,
+    "method": "post",
+    "path": "/warnings/acknowledge",
+    "function": "acknowledge_system_warnings"
+  },
+  {
+    "file": "audit/server/server/tbserver/system_admin.py",
+    "line": 938,
+    "method": "delete",
+    "path": "/jobs/history",
+    "function": "delete_terminal_job_history"
+  },
+  {
+    "file": "audit/server/server/tbserver/system_admin.py",
+    "line": 964,
+    "method": "delete",
+    "path": "/jobs/{job_id}",
+    "function": "delete_terminal_job"
+  },
+  {
+    "file": "audit/server/server/tbserver/system_admin.py",
+    "line": 996,
+    "method": "put",
+    "path": "/automation",
+    "function": "update_automation_settings"
+  },
+  {
+    "file": "audit/server/server/tbserver/system_admin.py",
+    "line": 1046,
+    "method": "post",
+    "path": "/email/test",
+    "function": "enqueue_test_email"
+  },
+  {
+    "file": "audit/server/server/tbserver/system_admin.py",
+    "line": 1092,
+    "method": "post",
+    "path": "/backups",
+    "function": "enqueue_backup"
+  },
+  {
+    "file": "audit/server/server/tbserver/system_admin.py",
+    "line": 1144,
+    "method": "post",
+    "path": "/backups/retention",
+    "function": "enqueue_backup_retention"
+  },
+  {
+    "file": "audit/server/server/tbserver/system_admin.py",
+    "line": 1186,
+    "method": "post",
+    "path": "/backups/{backup_run_id}/restore-test",
+    "function": "enqueue_restore_test"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_network.py",
+    "line": 453,
+    "method": "post",
+    "path": "/network/preview",
+    "function": "preview"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_network.py",
+    "line": 460,
+    "method": "post",
+    "path": "/network/mutations",
+    "function": "mutate"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_network.py",
+    "line": 524,
+    "method": "get",
+    "path": "/network/entities",
+    "function": "entities"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_network.py",
+    "line": 537,
+    "method": "get",
+    "path": "/network/entities/{entity_id}",
+    "function": "entity"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_network.py",
+    "line": 549,
+    "method": "get",
+    "path": "/network/entities/{entity_id}/history",
+    "function": "entity_history"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_network.py",
+    "line": 582,
+    "method": "get",
+    "path": "/network/changes",
+    "function": "changes"
+  },
+  {
+    "file": "audit/server/server/tbserver/files.py",
+    "line": 453,
+    "method": "post",
+    "path": "/worksites/{worksite_id}/uploads",
+    "function": "create_upload"
+  },
+  {
+    "file": "audit/server/server/tbserver/files.py",
+    "line": 513,
+    "method": "get",
+    "path": "/uploads/{upload_id}",
+    "function": "get_upload"
+  },
+  {
+    "file": "audit/server/server/tbserver/files.py",
+    "line": 524,
+    "method": "put",
+    "path": "/uploads/{upload_id}/chunk",
+    "function": "upload_chunk"
+  },
+  {
+    "file": "audit/server/server/tbserver/files.py",
+    "line": 582,
+    "method": "post",
+    "path": "/uploads/{upload_id}/complete",
+    "function": "complete_upload"
+  },
+  {
+    "file": "audit/server/server/tbserver/files.py",
+    "line": 766,
+    "method": "delete",
+    "path": "/uploads/{upload_id}",
+    "function": "abort_upload"
+  },
+  {
+    "file": "audit/server/server/tbserver/files.py",
+    "line": 797,
+    "method": "get",
+    "path": "/worksites/{worksite_id}/media",
+    "function": "list_worksite_media"
+  },
+  {
+    "file": "audit/server/server/tbserver/files.py",
+    "line": 966,
+    "method": "get",
+    "path": "/worksites/{worksite_id}/files",
+    "function": "list_files"
+  },
+  {
+    "file": "audit/server/server/tbserver/files.py",
+    "line": 1048,
+    "method": "get",
+    "path": "/files/{file_id}",
+    "function": "get_file_metadata"
+  },
+  {
+    "file": "audit/server/server/tbserver/files.py",
+    "line": 1083,
+    "method": "get",
+    "path": "/files/{file_id}/content",
+    "function": "download_file"
+  },
+  {
+    "file": "audit/server/server/tbserver/files.py",
+    "line": 1105,
+    "method": "get",
+    "path": "/files/{file_id}/rendition/{kind}",
+    "function": "download_image_rendition"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_parser.py",
+    "line": 707,
+    "method": "get",
+    "path": "/survey-originals/{original_id}/parse-catalog",
+    "function": "get_parse_catalog"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_parser.py",
+    "line": 718,
+    "method": "post",
+    "path": "/worksites/{worksite_id}/survey-originals/{original_id}/parse",
+    "function": "parse_original"
+  },
+  {
+    "file": "audit/server/server/tbserver/station_reference.py",
+    "line": 140,
+    "method": "get",
+    "path": "",
+    "function": "search_station_reference"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_survey_import.py",
+    "line": 796,
+    "method": "post",
+    "path": "/analyze",
+    "function": "analyze_survey_file"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_survey_import.py",
+    "line": 907,
+    "method": "post",
+    "path": "/analysis/{analysis_id}/import",
+    "function": "import_analyzed_survey"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_survey_import.py",
+    "line": 1041,
+    "method": "post",
+    "path": "/file",
+    "function": "import_survey_file"
+  },
+  {
+    "file": "audit/server/server/tbserver/portal_recovery.py",
+    "line": 79,
+    "method": "post",
+    "path": "/api/v1/portal/password/forgot",
+    "function": "forgot"
+  },
+  {
+    "file": "audit/server/server/tbserver/portal_recovery.py",
+    "line": 103,
+    "method": "get",
+    "path": "/api/v1/portal/email/status",
+    "function": "email_status"
+  },
+  {
+    "file": "audit/server/server/tbserver/portal_recovery.py",
+    "line": 111,
+    "method": "post",
+    "path": "/api/v1/portal/email/verify-request",
+    "function": "request_verification"
+  },
+  {
+    "file": "audit/server/server/tbserver/portal_recovery.py",
+    "line": 140,
+    "method": "post",
+    "path": "/api/v1/portal/email/verify",
+    "function": "verify_email"
+  },
+  {
+    "file": "audit/server/server/tbserver/portal_recovery.py",
+    "line": 164,
+    "method": "post",
+    "path": "/api/v1/portal/password/reset",
+    "function": "reset"
+  },
+  {
+    "file": "audit/server/server/tbserver/portal_recovery.py",
+    "line": 173,
+    "method": "post",
+    "path": "/api/v1/portal/password/change",
+    "function": "change_password"
+  },
+  {
+    "file": "audit/server/server/tbserver/portal_recovery.py",
+    "line": 189,
+    "method": "post",
+    "path": "/api/v1/admin/users/{user_id}/password-reset",
+    "function": "admin_reset"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_sections.py",
+    "line": 438,
+    "method": "get",
+    "path": "/worksites/{worksite_id}/survey-sections",
+    "function": "list_survey_sections"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_sections.py",
+    "line": 461,
+    "method": "post",
+    "path": "/worksites/{worksite_id}/survey-sections",
+    "function": "create_survey_section"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_sections.py",
+    "line": 561,
+    "method": "get",
+    "path": "/survey-sections/{dataset_id}",
+    "function": "get_survey_section"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_sections.py",
+    "line": 569,
+    "method": "patch",
+    "path": "/survey-sections/{dataset_id}",
+    "function": "update_survey_section"
+  },
+  {
+    "file": "audit/server/server/tbserver/catalog.py",
+    "line": 238,
+    "method": "get",
+    "path": "/inventory",
+    "function": "catalog_inventory"
+  },
+  {
+    "file": "audit/server/server/tbserver/catalog.py",
+    "line": 253,
+    "method": "get",
+    "path": "/lookup",
+    "function": "lookup_catalog"
+  },
+  {
+    "file": "audit/server/server/tbserver/catalog.py",
+    "line": 320,
+    "method": "get",
+    "path": "",
+    "function": "get_catalog"
+  },
+  {
+    "file": "audit/server/server/tbserver/catalog.py",
+    "line": 362,
+    "method": "get",
+    "path": "/routes/{route_id}/sections",
+    "function": "get_sections"
+  },
+  {
+    "file": "audit/server/server/tbserver/catalog.py",
+    "line": 381,
+    "method": "get",
+    "path": "/stations/{station_id}/objects",
+    "function": "get_station_objects"
+  },
+  {
+    "file": "audit/server/server/tbserver/catalog.py",
+    "line": 400,
+    "method": "get",
+    "path": "/routes/{route_id}/objects",
+    "function": "get_route_objects"
+  },
+  {
+    "file": "audit/server/server/tbserver/catalog.py",
+    "line": 419,
+    "method": "get",
+    "path": "/changes",
+    "function": "changes"
+  },
+  {
+    "file": "audit/server/server/tbserver/catalog.py",
+    "line": 461,
+    "method": "post",
+    "path": "/ack",
+    "function": "ack"
+  },
+  {
+    "file": "audit/server/server/tbserver/catalog.py",
+    "line": 469,
+    "method": "get",
+    "path": "/history",
+    "function": "history"
+  },
+  {
+    "file": "audit/server/server/tbserver/catalog.py",
+    "line": 711,
+    "method": "post",
+    "path": "/mutations",
+    "function": "mutate"
+  },
+  {
+    "file": "audit/server/server/tbserver/defects.py",
+    "line": 76,
+    "method": "get",
+    "path": "/worksites/{worksite_id}/defects",
+    "function": "list_defects"
+  },
+  {
+    "file": "audit/server/server/tbserver/defects.py",
+    "line": 100,
+    "method": "post",
+    "path": "/worksites/{worksite_id}/defects",
+    "function": "create_defect"
+  },
+  {
+    "file": "audit/server/server/tbserver/defects.py",
+    "line": 163,
+    "method": "get",
+    "path": "/defects/{defect_id}",
+    "function": "get_defect"
+  },
+  {
+    "file": "audit/server/server/tbserver/defects.py",
+    "line": 173,
+    "method": "patch",
+    "path": "/defects/{defect_id}",
+    "function": "update_defect"
+  },
+  {
+    "file": "audit/server/server/tbserver/defects.py",
+    "line": 218,
+    "method": "post",
+    "path": "/defects/{defect_id}/close",
+    "function": "close_defect"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 174,
+    "method": "get",
+    "path": "",
+    "function": "list_worksites"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 212,
+    "method": "post",
+    "path": "",
+    "function": "create_worksite"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 301,
+    "method": "patch",
+    "path": "/{worksite_id}",
+    "function": "update_worksite"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 349,
+    "method": "get",
+    "path": "/deletions",
+    "function": "list_worksite_deletions"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 375,
+    "method": "get",
+    "path": "/{worksite_id}",
+    "function": "get_worksite"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 396,
+    "method": "delete",
+    "path": "/{worksite_id}",
+    "function": "delete_worksite"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 515,
+    "method": "get",
+    "path": "/{worksite_id}/nodes",
+    "function": "list_nodes"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 548,
+    "method": "post",
+    "path": "/{worksite_id}/nodes",
+    "function": "create_node"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 623,
+    "method": "patch",
+    "path": "/{worksite_id}/nodes/{node_id}",
+    "function": "update_node"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 719,
+    "method": "delete",
+    "path": "/{worksite_id}/nodes/{node_id}",
+    "function": "delete_node"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 799,
+    "method": "get",
+    "path": "/{worksite_id}/members",
+    "function": "list_members"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 841,
+    "method": "post",
+    "path": "/{worksite_id}/members/{member_user_id}/team",
+    "function": "transfer_helper_team"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 1012,
+    "method": "patch",
+    "path": "/{worksite_id}/members/{member_user_id}/permissions",
+    "function": "update_member_permissions"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 1087,
+    "method": "get",
+    "path": "/{worksite_id}/teams",
+    "function": "list_teams"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 1111,
+    "method": "get",
+    "path": "/{worksite_id}/invite-candidates",
+    "function": "list_invite_candidates"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 1141,
+    "method": "get",
+    "path": "/{worksite_id}/invitations",
+    "function": "list_worksite_invitations"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 1174,
+    "method": "post",
+    "path": "/{worksite_id}/invitations",
+    "function": "create_worksite_invitation"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 1340,
+    "method": "post",
+    "path": "/worksites/{worksite_id}/invitations",
+    "function": "create_legacy_worksite_invitation"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 1391,
+    "method": "post",
+    "path": "/{worksite_id}/invitations/{invitation_id}/revoke",
+    "function": "revoke_worksite_invitation"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 1450,
+    "method": "post",
+    "path": "/invitations/redeem",
+    "function": "redeem_worksite_invitation"
+  },
+  {
+    "file": "audit/server/server/tbserver/worksites.py",
+    "line": 1645,
+    "method": "delete",
+    "path": "/{worksite_id}/members/{member_user_id}",
+    "function": "remove_helper"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 2158,
+    "method": "post",
+    "path": "/manual-segments",
+    "function": "create_manual_segment"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 2212,
+    "method": "patch",
+    "path": "/manual-segments/{segment_id}",
+    "function": "update_manual_segment"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 2317,
+    "method": "delete",
+    "path": "/manual-segments/{segment_id}",
+    "function": "deactivate_manual_segment"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 2411,
+    "method": "get",
+    "path": "/search",
+    "function": "search_catalog"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 2471,
+    "method": "get",
+    "path": "/availability",
+    "function": "availability"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 2895,
+    "method": "get",
+    "path": "/coverage/summary",
+    "function": "coverage_summary"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 2902,
+    "method": "get",
+    "path": "/coverage/overview-lines",
+    "function": "coverage_overview_lines"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 2928,
+    "method": "get",
+    "path": "/coverage",
+    "function": "coverage"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3098,
+    "method": "get",
+    "path": "/management/axes",
+    "function": "management_axes"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3135,
+    "method": "patch",
+    "path": "/management/axes/{axis_id}",
+    "function": "management_update_axis"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3217,
+    "method": "post",
+    "path": "/management/axes/{axis_id}/archive",
+    "function": "management_archive_axis"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3223,
+    "method": "post",
+    "path": "/management/axes/{axis_id}/restore",
+    "function": "management_restore_axis"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3322,
+    "method": "get",
+    "path": "/management/axes/{axis_id}/gvp",
+    "function": "management_gvp_points"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3365,
+    "method": "post",
+    "path": "/management/axes/{axis_id}/manual-km/gvp-calculate",
+    "function": "management_gvp_calculate"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3488,
+    "method": "post",
+    "path": "/management/axes/{axis_id}/manual-km/preview",
+    "function": "management_preview_km"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3497,
+    "method": "post",
+    "path": "/management/axes/{axis_id}/manual-km",
+    "function": "management_save_km"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3554,
+    "method": "post",
+    "path": "/management/axes/{axis_id}/manual-km/{segment_id}/deactivate",
+    "function": "management_deactivate_km"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3584,
+    "method": "get",
+    "path": "/coverage/{axis_id}/details",
+    "function": "coverage_axis_details"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3675,
+    "method": "get",
+    "path": "/coverage/{axis_id}/geometry",
+    "function": "coverage_axis_geometry"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3762,
+    "method": "get",
+    "path": "/geometry",
+    "function": "geometry"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3825,
+    "method": "get",
+    "path": "/changes",
+    "function": "changes"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3934,
+    "method": "get",
+    "path": "/conflicts",
+    "function": "list_conflicts"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3957,
+    "method": "get",
+    "path": "/conflicts/{conflict_id}",
+    "function": "conflict_detail"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 3977,
+    "method": "post",
+    "path": "/conflicts/{conflict_id}/resolve",
+    "function": "resolve_conflict"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 4040,
+    "method": "patch",
+    "path": "/axes/{axis_id}",
+    "function": "update_axis"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 4142,
+    "method": "post",
+    "path": "/reindex",
+    "function": "enqueue_reindex"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 4302,
+    "method": "get",
+    "path": "/axes/{axis_id}/km-sync",
+    "function": "shared_km_state"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 4325,
+    "method": "post",
+    "path": "/axes/{axis_id}/km-sync",
+    "function": "shared_km_save"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_catalog.py",
+    "line": 4386,
+    "method": "post",
+    "path": "/axes/{axis_id}/km-sync/{segment_id}/deactivate",
+    "function": "shared_km_deactivate"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin.py",
+    "line": 166,
+    "method": "get",
+    "path": "/companies",
+    "function": "list_companies"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin.py",
+    "line": 188,
+    "method": "post",
+    "path": "/companies",
+    "function": "create_company"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin.py",
+    "line": 234,
+    "method": "post",
+    "path": "/worksites",
+    "function": "admin_create_worksite"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin.py",
+    "line": 242,
+    "method": "get",
+    "path": "/users",
+    "function": "list_users"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin.py",
+    "line": 264,
+    "method": "post",
+    "path": "/users",
+    "function": "create_user"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin.py",
+    "line": 338,
+    "method": "patch",
+    "path": "/users/{user_id}",
+    "function": "update_user"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin.py",
+    "line": 435,
+    "method": "post",
+    "path": "/users/{user_id}/portal-activation",
+    "function": "issue_portal_activation"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin.py",
+    "line": 507,
+    "method": "delete",
+    "path": "/users/{user_id}",
+    "function": "delete_user"
+  },
+  {
+    "file": "audit/server/server/tbserver/profile.py",
+    "line": 82,
+    "method": "get",
+    "path": "/profile",
+    "function": "get_profile"
+  },
+  {
+    "file": "audit/server/server/tbserver/profile.py",
+    "line": 89,
+    "method": "put",
+    "path": "/profile",
+    "function": "update_contacts"
+  },
+  {
+    "file": "audit/server/server/tbserver/profile.py",
+    "line": 128,
+    "method": "patch",
+    "path": "/profile",
+    "function": "update_own_profile"
+  },
+  {
+    "file": "audit/server/server/tbserver/profile.py",
+    "line": 177,
+    "method": "get",
+    "path": "/directory",
+    "function": "company_directory"
+  },
+  {
+    "file": "audit/server/server/tbserver/portal.py",
+    "line": 159,
+    "method": "post",
+    "path": "/activate",
+    "function": "activate"
+  },
+  {
+    "file": "audit/server/server/tbserver/portal.py",
+    "line": 298,
+    "method": "post",
+    "path": "/login",
+    "function": "login"
+  },
+  {
+    "file": "audit/server/server/tbserver/portal.py",
+    "line": 377,
+    "method": "get",
+    "path": "/me",
+    "function": "me"
+  },
+  {
+    "file": "audit/server/server/tbserver/portal.py",
+    "line": 390,
+    "method": "post",
+    "path": "/logout",
+    "function": "logout"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_workspace.py",
+    "line": 168,
+    "method": "get",
+    "path": "/management/workspace/axes/{axis_id}",
+    "function": "workspace_axis"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_workspace.py",
+    "line": 193,
+    "method": "post",
+    "path": "/management/workspace/axes/{axis_id}/preview",
+    "function": "workspace_preview"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_workspace.py",
+    "line": 215,
+    "method": "post",
+    "path": "/management/workspace/axes/{axis_id}",
+    "function": "workspace_save"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_workspace.py",
+    "line": 242,
+    "method": "get",
+    "path": "/management/workspace/sources",
+    "function": "reset_sources"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_workspace.py",
+    "line": 302,
+    "method": "post",
+    "path": "/management/workspace/reset/preview",
+    "function": "reset_preview"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_workspace.py",
+    "line": 308,
+    "method": "post",
+    "path": "/management/workspace/reset",
+    "function": "reset_apply"
+  },
+  {
+    "file": "audit/server/server/tbserver/sync.py",
+    "line": 228,
+    "method": "get",
+    "path": "/changes",
+    "function": "changes"
+  },
+  {
+    "file": "audit/server/server/tbserver/sync.py",
+    "line": 254,
+    "method": "get",
+    "path": "/changes/wait",
+    "function": "wait_changes"
+  },
+  {
+    "file": "audit/server/server/tbserver/sync.py",
+    "line": 308,
+    "method": "get",
+    "path": "/events",
+    "function": "live_events"
+  },
+  {
+    "file": "audit/server/server/tbserver/capabilities.py",
+    "line": 90,
+    "method": "get",
+    "path": "/capabilities",
+    "function": "get_capabilities"
+  },
+  {
+    "file": "audit/server/server/tbserver/media_gallery.py",
+    "line": 97,
+    "method": "get",
+    "path": "/worksites/{worksite_id}/media/page",
+    "function": "gallery_page"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 285,
+    "method": "get",
+    "path": "/worksites/{worksite_id}/teams/{team_id}/btbs",
+    "function": "list_btbs"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 312,
+    "method": "post",
+    "path": "/worksites/{worksite_id}/btbs",
+    "function": "create_btb"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 379,
+    "method": "get",
+    "path": "/btbs/{btb_id}/sync-state",
+    "function": "btb_sync_state"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 403,
+    "method": "get",
+    "path": "/btbs/{btb_id}",
+    "function": "get_btb"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 478,
+    "method": "get",
+    "path": "/btbs/{btb_id}/weather/locations",
+    "function": "btb_weather_locations"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 490,
+    "method": "get",
+    "path": "/btbs/{btb_id}/weather/suggestion",
+    "function": "btb_weather_suggestion"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 504,
+    "method": "patch",
+    "path": "/btbs/{btb_id}/header",
+    "function": "update_btb_header"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 564,
+    "method": "post",
+    "path": "/btbs/{btb_id}/entries",
+    "function": "create_entry"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 667,
+    "method": "patch",
+    "path": "/btbs/{btb_id}/entries/{entry_id}",
+    "function": "update_entry"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 751,
+    "method": "delete",
+    "path": "/btbs/{btb_id}/entries/{entry_id}",
+    "function": "delete_entry"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 785,
+    "method": "get",
+    "path": "/btbs/{btb_id}/participants",
+    "function": "get_btb_participants"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 804,
+    "method": "post",
+    "path": "/btbs/{btb_id}/shift-finish",
+    "function": "finish_own_shift"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 836,
+    "method": "post",
+    "path": "/btbs/{btb_id}/shift-resume",
+    "function": "resume_own_shift"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 868,
+    "method": "patch",
+    "path": "/btbs/{btb_id}/participants/{participant_user_id}",
+    "function": "update_btb_participant_by_lead"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 906,
+    "method": "post",
+    "path": "/btbs/{btb_id}/finalize",
+    "function": "finalize_btb"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 1038,
+    "method": "get",
+    "path": "/btbs/{btb_id}/final-pdf",
+    "function": "get_final_pdf"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 1060,
+    "method": "post",
+    "path": "/btbs/{btb_id}/reopen",
+    "function": "reopen_btb"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 1090,
+    "method": "patch",
+    "path": "/btbs/{btb_id}/photos/{file_id}",
+    "function": "update_btb_photo"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 1255,
+    "method": "delete",
+    "path": "/btbs/{btb_id}/photos/{file_id}",
+    "function": "detach_btb_photo"
+  },
+  {
+    "file": "audit/server/server/tbserver/btb.py",
+    "line": 1286,
+    "method": "delete",
+    "path": "/btbs/{btb_id}",
+    "function": "delete_btb"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_session.py",
+    "line": 104,
+    "method": "post",
+    "path": "/login",
+    "function": "admin_login"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_session.py",
+    "line": 181,
+    "method": "get",
+    "path": "/me",
+    "function": "admin_me"
+  },
+  {
+    "file": "audit/server/server/tbserver/admin_session.py",
+    "line": 191,
+    "method": "post",
+    "path": "/logout",
+    "function": "admin_logout"
+  },
+  {
+    "file": "audit/server/server/tbserver/main.py",
+    "line": 95,
+    "method": "get",
+    "path": "/",
+    "function": "portal_entry"
+  },
+  {
+    "file": "audit/server/server/tbserver/main.py",
+    "line": 106,
+    "method": "get",
+    "path": "/health/live",
+    "function": "health_live"
+  },
+  {
+    "file": "audit/server/server/tbserver/main.py",
+    "line": 111,
+    "method": "get",
+    "path": "/health/ready",
+    "function": "health_ready"
+  },
+  {
+    "file": "audit/server/server/tbserver/acceptances.py",
+    "line": 83,
+    "method": "get",
+    "path": "/worksites/{worksite_id}/acceptances",
+    "function": "list_acceptances"
+  },
+  {
+    "file": "audit/server/server/tbserver/acceptances.py",
+    "line": 107,
+    "method": "post",
+    "path": "/worksites/{worksite_id}/acceptances",
+    "function": "create_acceptance"
+  },
+  {
+    "file": "audit/server/server/tbserver/acceptances.py",
+    "line": 172,
+    "method": "get",
+    "path": "/acceptances/{acceptance_id}",
+    "function": "get_acceptance"
+  },
+  {
+    "file": "audit/server/server/tbserver/acceptances.py",
+    "line": 182,
+    "method": "patch",
+    "path": "/acceptances/{acceptance_id}",
+    "function": "update_acceptance"
+  },
+  {
+    "file": "audit/server/server/tbserver/acceptances.py",
+    "line": 229,
+    "method": "delete",
+    "path": "/acceptances/{acceptance_id}",
+    "function": "delete_acceptance"
+  },
+  {
+    "file": "audit/server/server/tbserver/acceptances.py",
+    "line": 321,
+    "method": "post",
+    "path": "/acceptances/{acceptance_id}/finalize",
+    "function": "finalize_acceptance"
+  },
+  {
+    "file": "audit/server/server/tbserver/devices.py",
+    "line": 123,
+    "method": "post",
+    "path": "/login",
+    "function": "device_login"
+  },
+  {
+    "file": "audit/server/server/tbserver/devices.py",
+    "line": 233,
+    "method": "get",
+    "path": "/me",
+    "function": "device_me"
+  },
+  {
+    "file": "audit/server/server/tbserver/devices.py",
+    "line": 256,
+    "method": "get",
+    "path": "/devices",
+    "function": "list_devices"
+  },
+  {
+    "file": "audit/server/server/tbserver/devices.py",
+    "line": 275,
+    "method": "post",
+    "path": "/users/{user_id}/device-activation",
+    "function": "issue_device_activation"
+  },
+  {
+    "file": "audit/server/server/tbserver/devices.py",
+    "line": 356,
+    "method": "post",
+    "path": "/devices/{device_id}/release",
+    "function": "release_device"
+  },
+  {
+    "file": "audit/server/server/tbserver/devices.py",
+    "line": 394,
+    "method": "post",
+    "path": "/devices/{device_id}/block",
+    "function": "block_device"
+  },
+  {
+    "file": "audit/server/server/tbserver/survey_projection.py",
+    "line": 319,
+    "method": "post",
+    "path": "/survey-sections/{dataset_id}/rebuild-auto-anchors",
+    "function": "rebuild_auto_anchors"
+  },
+  {
+    "file": "audit/server/server/tbserver/track_data.py",
+    "line": 90,
+    "method": "get",
+    "path": "/worksites/{worksite_id}/track-data",
+    "function": "list_track_data"
+  },
+  {
+    "file": "audit/server/server/tbserver/track_data.py",
+    "line": 109,
+    "method": "post",
+    "path": "/worksites/{worksite_id}/track-data",
+    "function": "create_track_data"
+  },
+  {
+    "file": "audit/server/server/tbserver/track_data.py",
+    "line": 207,
+    "method": "get",
+    "path": "/track-data/{dataset_id}",
+    "function": "get_track_data"
+  },
+  {
+    "file": "audit/server/server/tbserver/track_data.py",
+    "line": 215,
+    "method": "patch",
+    "path": "/track-data/{dataset_id}",
+    "function": "update_track_data"
+  },
+  {
+    "file": "audit/server/server/tbserver/track_data.py",
+    "line": 282,
+    "method": "delete",
+    "path": "/track-data/{dataset_id}",
+    "function": "delete_track_data"
+  }
+]

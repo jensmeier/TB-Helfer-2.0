@@ -1,0 +1,27 @@
+[
+  {
+    "script": "reproduce_track_access.py",
+    "result": {
+      "reproduced": true,
+      "list_returns_outside_scope": true,
+      "detail_returns_outside_scope": true,
+      "worksite_view_explicitly_false": true,
+      "real_production_handlers_and_worksite_context": true,
+      "sql_double": true,
+      "http_postgres_e2e": false
+    }
+  },
+  {
+    "script": "reproduce_finalize_cleanup.py",
+    "result": {
+      "reproduced": true,
+      "db_commit_completed": true,
+      "db_status": "FINALIZED",
+      "filesystem_reverted_to_previous_pdf": true,
+      "db_file_hash_mismatch": true,
+      "production_finalize_and_filesystem_helpers": true,
+      "database_double": true,
+      "nas_e2e": false
+    }
+  }
+]

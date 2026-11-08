@@ -1,0 +1,1122 @@
+[
+  {
+    "file": "03_verify_schema10_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.091,
+    "tail": "SCHEMA10_SOURCE_FAILED:MISSING_CONTRACT:app/src/main/java/de/tbhelfer/ui/bautagebuch/GesamtBilderlisteXlsx.kt:autoFilter\nTraceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/03_verify_schema10_source.py\", line 172, in <module>\n    raise SystemExit(main())\n                     ^^^^^^\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/03_verify_schema10_source.py\", line 128, in main\n    require_text(\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/03_verify_schema10_source.py\", line 26, in require_text\n    raise AssertionError(f\"MISSING_CONTRACT:{path.relative_to(ROOT)}:{needle}\")\nAssertionError: MISSING_CONTRACT:app/src/main/java/de/tbhelfer/ui/bautagebuch/GesamtBilderlisteXlsx.kt:autoFilter\n"
+  },
+  {
+    "file": "04_test_team_btb_merge.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.057,
+    "tail": "TEAM_BTB_MERGE_OK\n"
+  },
+  {
+    "file": "06_verify_schema11_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.035,
+    "tail": "SCHEMA11_SOURCE_OK\n"
+  },
+  {
+    "file": "08_verify_multi_btb_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.042,
+    "tail": "BTB_ANDROID_MODEL_ID_RULE_MISSING\n"
+  },
+  {
+    "file": "09_verify_android_multi_btb_photo_state_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.045,
+    "tail": "PHOTO_SELECTION_VERSION2_MISSING\n"
+  },
+  {
+    "file": "100_verify_btb_structured_reassignment_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.039,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/100_verify_btb_structured_reassignment_source.py\", line 63, in <module>\n    assert \"lat\" not in meta.split(\"BTB_PHOTO_OVERRIDE_KEYS\", 1)[1].split(\"})\", 1)[0]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+  },
+  {
+    "file": "100_verify_server_portal_btb_contract_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.048,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/100_verify_server_portal_btb_contract_source.py\", line 10, in <module>\n    assert \"const prefix='arbeit-frei:',index=nextSlotIndex(prefix);\" in portal\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+  },
+  {
+    "file": "101_verify_admin_portal_session_split_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.034,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/101_verify_admin_portal_session_split_source.py\", line 34, in <module>\n    assert token in admin_web, token\n           ^^^^^^^^^^^^^^^^^^\nAssertionError: \"page_prefix\": \"/admin/v1\"\n"
+  },
+  {
+    "file": "102_verify_delta_longpoll_source.py",
+    "exit": 1,
+    "category": "TEST_SYNTAX",
+    "seconds": 0.02,
+    "tail": "  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/102_verify_delta_longpoll_source.py\", line 21\n    \"@router.get(\"/events\")\",\n    ^^^^^^^^^^^^^^^^^^^^^^^^\nSyntaxError: invalid syntax. Perhaps you forgot a comma?\n"
+  },
+  {
+    "file": "103_verify_image_renditions_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.077,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/103_verify_image_renditions_source.py\", line 23, in <module>\n    assert \"file.renditions&&file.renditions.thumb\" in worksite_template\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+  },
+  {
+    "file": "104_verify_structured_photo_metadata_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.046,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/104_verify_structured_photo_metadata_source.py\", line 16, in <module>\n    assert '\"photo_metadata\": canonical_photo_metadata(' in documents\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+  },
+  {
+    "file": "105_verify_staging_memory_guard_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.034,
+    "tail": "OK: staging API has cgroup memory guard plus bounded PDF/image rendering\n"
+  },
+  {
+    "file": "106_verify_backup_rendition_exclusion_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.03,
+    "tail": "OK: FILES/FULL backups exclude derived image rendition caches\n"
+  },
+  {
+    "file": "107_verify_runtime_probe_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.037,
+    "tail": "OK: staging runtime probe covers DB, migration, contracts, rendition and memory guard\n"
+  },
+  {
+    "file": "108_verify_synology_integration_apply_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.041,
+    "tail": "OK: guarded Synology deploy applies backup -> migration 015 -> service recreate -> runtime probe without DB-volume teardown\n"
+  },
+  {
+    "file": "109_verify_readonly_acceptance_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.037,
+    "tail": "OK: read-only staging acceptance covers portal/admin/profile/catalog/system without fachliche mutation\n"
+  },
+  {
+    "file": "10_verify_android_btb_quick_switch_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.191,
+    "tail": "ANDROID_BTB_QUICK_SWITCH_OK\n"
+  },
+  {
+    "file": "110_verify_backup_job_e2e_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.049,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/110_verify_backup_job_e2e_source.py\", line 17, in <module>\n    assert token in tool, token\n           ^^^^^^^^^^^^^\nAssertionError: item.get(\"byte_size\")\n"
+  },
+  {
+    "file": "111_verify_post_deploy_e2e_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.047,
+    "tail": "OK: post-deploy E2E runner is ordered and keeps secrets off child command lines\n"
+  },
+  {
+    "file": "112_verify_survey_reference_catalog_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.125,
+    "tail": "PASS survey reference catalog source\n"
+  },
+  {
+    "file": "113_verify_survey_catalog_merge_logic.py",
+    "exit": 1,
+    "category": "ENVIRONMENT",
+    "seconds": 0.46,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/113_verify_survey_catalog_merge_logic.py\", line 5, in <module>\n    from tbserver.survey_catalog import (\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/tbserver/survey_catalog.py\", line 11, in <module>\n    from psycopg.types.json import Jsonb\nModuleNotFoundError: No module named 'psycopg'\n"
+  },
+  {
+    "file": "114_verify_survey_staging_reset_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.05,
+    "tail": "PASS survey staging reset source\n"
+  },
+  {
+    "file": "115_verify_survey_import_station_assignment_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.036,
+    "tail": "PASS survey import station assignment source\n"
+  },
+  {
+    "file": "116_verify_survey_diagnostics_portal_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.052,
+    "tail": "PASS survey diagnostics portal source\n"
+  },
+  {
+    "file": "117_verify_survey_coverage_overview_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.038,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/117_verify_survey_coverage_overview_source.py\", line 39, in <module>\n    assert 'href=\"/admin/v1/survey-overview\">Trassendatenübersicht</a>' in base\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+  },
+  {
+    "file": "118_verify_gvp_projection_performance.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 1.174,
+    "tail": "...........\n----------------------------------------------------------------------\nRan 11 tests in 0.839s\n\nOK\n"
+  },
+  {
+    "file": "120_verify_coverage_details.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.24,
+    "tail": "test_admin_can_read_archived_axis_details (__main__.CoverageDetailsTests.test_admin_can_read_archived_axis_details) ... ok\ntest_empty_details_is_a_valid_terminal_page (__main__.CoverageDetailsTests.test_empty_details_is_a_valid_terminal_page) ... ok\ntest_fast_shapes_skip_quality_and_preserve_legacy_default (__main__.CoverageDetailsTests.test_fast_shapes_skip_quality_and_preserve_legacy_default) ... ok\ntest_history_paging_and_safe_field_diff (__main__.CoverageDetailsTests.test_history_paging_and_safe_field_diff) ... ok\ntest_metadata_endpoint_does_not_load_or_modify_original_files (__main__.CoverageDetailsTests.test_metadata_endpoint_does_not_load_or_modify_original_files) ... ok\ntest_unknown_axis_stops_before_related_data (__main__.CoverageDetailsTests.test_unknown_axis_stops_before_related_data) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.015s\n\nOK\n"
+  },
+  {
+    "file": "121_verify_axis_management.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.631,
+    "tail": "test_archive_preserves_children_and_metadata (__main__.ManagementTests.test_archive_preserves_children_and_metadata) ... ok\ntest_archived_or_blank_name_not_editable (__main__.ManagementTests.test_archived_or_blank_name_not_editable) ... ok\ntest_assignment_updates_identity (__main__.ManagementTests.test_assignment_updates_identity) ... ok\ntest_collision_does_not_merge (__main__.ManagementTests.test_collision_does_not_merge) ... ok\ntest_list_is_bounded (__main__.ManagementTests.test_list_is_bounded) ... ok\ntest_name_edit_keeps_identity (__main__.ManagementTests.test_name_edit_keeps_identity) ... ok\ntest_repeated_same_status_is_noop (__main__.ManagementTests.test_repeated_same_status_is_noop) ... ok\ntest_restore_review_and_metadata (__main__.ManagementTests.test_restore_review_and_metadata) ... ok\ntest_review_cannot_unarchive_stale_axis (__main__.ManagementTests.test_review_cannot_unarchive_stale_axis) ... ok\ntest_routes_require_admin_and_csrf (__main__.ManagementTests.test_routes_require_admin_and_csrf) ... ok\ntest_stale_version_writes_nothing (__main__.ManagementTests.test_stale_version_writes_nothing) ... ok\ntest_unknown_or_private_not_returned (__main__.ManagementTests.test_unknown_or_private_not_returned) ... ok\n\n----------------------------------------------------------------------\nRan 12 tests in 0.270s\n\nOK\n"
+  },
+  {
+    "file": "122_verify_manual_overlay.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.384,
+    "tail": "................\n----------------------------------------------------------------------\nRan 16 tests in 0.155s\n\nOK\n"
+  },
+  {
+    "file": "123_verify_admin_km_editor.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.726,
+    "tail": "..............\n----------------------------------------------------------------------\nRan 14 tests in 0.386s\n\nOK\n"
+  },
+  {
+    "file": "124_verify_gvp_editor.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 1.015,
+    "tail": "..........\n----------------------------------------------------------------------\nRan 10 tests in 0.491s\n\nOK\n"
+  },
+  {
+    "file": "125_verify_survey_workspace.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 1.091,
+    "tail": "................\n----------------------------------------------------------------------\nRan 16 tests in 0.620s\n\nOK\n"
+  },
+  {
+    "file": "126_verify_original_station_bounds.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.269,
+    "tail": "......\n----------------------------------------------------------------------\nRan 6 tests in 0.001s\n\nOK\n"
+  },
+  {
+    "file": "127_verify_survey_network.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 2.009,
+    "tail": ".....................\n----------------------------------------------------------------------\nRan 21 tests in 1.799s\n\nOK\n"
+  },
+  {
+    "file": "128_verify_network_workspace.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.225,
+    "tail": "..\n----------------------------------------------------------------------\nRan 2 tests in 0.107s\n\nOK\n"
+  },
+  {
+    "file": "129_verify_network_chainage.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 1.416,
+    "tail": "...........\n----------------------------------------------------------------------\nRan 11 tests in 1.039s\n\nOK\n"
+  },
+  {
+    "file": "12_verify_schema12_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.037,
+    "tail": "SCHEMA12_SOURCE_OK\n"
+  },
+  {
+    "file": "130_verify_monitor_liveness.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.678,
+    "tail": "........\n----------------------------------------------------------------------\nRan 8 tests in 0.315s\n\nOK\n"
+  },
+  {
+    "file": "131_verify_backup_failure_safety.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.386,
+    "tail": "............\n----------------------------------------------------------------------\nRan 12 tests in 0.187s\n\nOK\n"
+  },
+  {
+    "file": "132_verify_permission_guards.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.232,
+    "tail": "...........\n----------------------------------------------------------------------\nRan 11 tests in 0.115s\n\nOK\n"
+  },
+  {
+    "file": "133_verify_admin_worksite_boundary.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.668,
+    "tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.110s\n\nOK\n"
+  },
+  {
+    "file": "134_audit_session_revocation.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.219,
+    "tail": "..\n----------------------------------------------------------------------\nRan 2 tests in 0.026s\n\nOK\n"
+  },
+  {
+    "file": "135_verify_sync_reauthentication.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.892,
+    "tail": ".......\n----------------------------------------------------------------------\nRan 7 tests in 0.178s\n\nOK\n"
+  },
+  {
+    "file": "136_verify_public_alert_confirmation.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.164,
+    "tail": "......\n----------------------------------------------------------------------\nRan 6 tests in 0.042s\n\nOK\n"
+  },
+  {
+    "file": "137_verify_snapshot_backup.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.335,
+    "tail": ".........\n----------------------------------------------------------------------\nRan 9 tests in 0.027s\n\nOK\n"
+  },
+  {
+    "file": "138_verify_file_endpoint_rights.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.725,
+    "tail": "...........\n----------------------------------------------------------------------\nRan 11 tests in 0.325s\n\nOK\n"
+  },
+  {
+    "file": "139_verify_255_sync_clients.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 1.757,
+    "tail": "{\"scope\": \"local-doubles-quiet\", \"clients\": 255, \"wall_s\": 0.414, \"peak_queries\": 8, \"hub_polls\": 19}\npreparing_portal_sessions=3 mode=unique\n........\n----------------------------------------------------------------------\nRan 8 tests in 1.512s\n\nOK\n"
+  },
+  {
+    "file": "13_verify_android_btb_auto_sync_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.03,
+    "tail": "ERROR: Zentraler BTB-Sync-Hook fehlt.\nERROR: SofortSync ist nicht fehlertolerant vom lokalen Speichern entkoppelt.\nERROR: Moderner BTB-Schreibpfad wurde nicht gefunden.\nERROR: Legacy-BTB-Schreibpfad wurde nicht gefunden.\nERROR: BTB-Sync-Hook muss modernen und Legacy-Speicherpfad abdecken.\n"
+  },
+  {
+    "file": "140_verify_recovery_guard.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.208,
+    "tail": ".......\n----------------------------------------------------------------------\nRan 7 tests in 0.006s\n\nOK\n"
+  },
+  {
+    "file": "141_verify_recovery_modes.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.508,
+    "tail": "....\n----------------------------------------------------------------------\nRan 4 tests in 0.293s\n\nOK\n"
+  },
+  {
+    "file": "142_verify_recovery_control.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 1.244,
+    "tail": "..........\n----------------------------------------------------------------------\nRan 10 tests in 1.118s\n\nOK\n"
+  },
+  {
+    "file": "143_verify_backup_domains.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.128,
+    "tail": "..............\n----------------------------------------------------------------------\nRan 14 tests in 0.006s\n\nOK\n"
+  },
+  {
+    "file": "144_verify_scoped_archives.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.16,
+    "tail": "test_corrupt_source_never_publishes_archive (__main__.Tests.test_corrupt_source_never_publishes_archive) ... ok\ntest_duplicate_and_path_traversal_members (__main__.Tests.test_duplicate_and_path_traversal_members) ... ok\ntest_existing_archive_never_overwritten (__main__.Tests.test_existing_archive_never_overwritten) ... ok\ntest_foreign_domain_and_unrelated_dependency_rejected (__main__.Tests.test_foreign_domain_and_unrelated_dependency_rejected) ... ok\ntest_invalid_paths_and_conflicting_file_metadata (__main__.Tests.test_invalid_paths_and_conflicting_file_metadata) ... ok\ntest_roundtrip_both_domains_and_minimal_dependencies (__main__.Tests.test_roundtrip_both_domains_and_minimal_dependencies) ... ok\ntest_symlink_source_is_rejected (__main__.Tests.test_symlink_source_is_rejected) ... ok\ntest_tamper_checksum (__main__.Tests.test_tamper_checksum) ... ok\ntest_version_mismatch (__main__.Tests.test_version_mismatch) ... ok\n\n----------------------------------------------------------------------\nRan 9 tests in 0.029s\n\nOK\n"
+  },
+  {
+    "file": "145_verify_recovery_runtime.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.954,
+    "tail": "test_asgi_gate_blocks_wrong_generation_write_probe_websocket_and_corruption (__main__.Tests.test_asgi_gate_blocks_wrong_generation_write_probe_websocket_and_corruption) ... ok\ntest_missing_and_corrupt_selection_never_start_or_keep_writer (__main__.Tests.test_missing_and_corrupt_selection_never_start_or_keep_writer) ... ok\ntest_open_gate_and_legacy_pass_through (__main__.Tests.test_open_gate_and_legacy_pass_through) ... ok\ntest_scope_and_path_validation (__main__.Tests.test_scope_and_path_validation) ... ok\ntest_stop_probe_open_switches_all_runtime_settings_and_restart_keeps_target (__main__.Tests.test_stop_probe_open_switches_all_runtime_settings_and_restart_keeps_target) ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 0.755s\n\nOK\n"
+  },
+  {
+    "file": "146_verify_backup_catalog.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.34,
+    "tail": "..........\n----------------------------------------------------------------------\nRan 10 tests in 0.079s\n\nOK\n"
+  },
+  {
+    "file": "147_verify_recovery_service.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.224,
+    "tail": "......\n----------------------------------------------------------------------\nRan 6 tests in 0.012s\n\nOK\n"
+  },
+  {
+    "file": "148_verify_system_backup.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.222,
+    "tail": "....\n----------------------------------------------------------------------\nRan 4 tests in 0.024s\n\nOK\n"
+  },
+  {
+    "file": "149_verify_automatic_deployment.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.17,
+    "tail": "..\n----------------------------------------------------------------------\nRan 2 tests in 0.039s\n\nOK\n"
+  },
+  {
+    "file": "14_verify_android_btb_sections_logo_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.064,
+    "tail": "ERROR: Android-Buildkandidat 200050 ist nicht gesetzt.\nERROR: Importierte moderne BTB-Fotos erhalten ihre Server-btbId nicht wieder lokal.\n"
+  },
+  {
+    "file": "151_portal_km_tree_regression.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.197,
+    "tail": "PASS: production KM parser inclusive boundaries, unchanged fractional search, screenshot tree order/rendering, no mutations, orphan/cycle/deep-tree safety\n"
+  },
+  {
+    "file": "152_portal_btb_input_regression.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.11,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/152_portal_btb_input_regression.py\", line 54, in <module>\n    assert r['slots'][1]['uhrzeit']=='02:00' and r['slots'][0]['niederschlag']=='Regen'\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+  },
+  {
+    "file": "153_entry_photo_shift_regression.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.455,
+    "tail": "PORTAL-017 EXIF endian/JPEG/bounds, GPS parsing, overnight/month/year, stable entry binding PASS\nPORTAL-017 Python binding validation/versioned photo move/GPS clear/isolation/PDF labels PASS (controlled doubles; no DB/NAS E2E)\n"
+  },
+  {
+    "file": "154_worksite_catalog_regression.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.081,
+    "tail": "154 Python PASS: names, list SQL, delete rights/conflict, lookup merge/auth/reference failure\n"
+  },
+  {
+    "file": "155_catalog_inventory_regression.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.052,
+    "tail": "155 Python PASS: separate ranges, missing/unreliable KM, geometry absence, whitelist, shared scope/counts/auth\n"
+  },
+  {
+    "file": "156_node_kind_regression.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.069,
+    "tail": "156 Python PASS: free-route sanitation, preserves other metadata/station mode, real name-only PATCH cleans stale station\n"
+  },
+  {
+    "file": "15_verify_android_btb_delete_lifecycle_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.086,
+    "tail": "ERROR: Server-Tombstones werden nicht lokal auf dieselbe btbId angewendet.\nERROR: BtbActiveContext erkennt einen lokal/remote abgeschlossenen BTB nicht.\nERROR: Abschlussstatus stoesst keinen Team-SofortSync an.\n"
+  },
+  {
+    "file": "17_verify_schema13_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.036,
+    "tail": "OK: Schema-13-/API-0.7.1-Basisvertrag für Baustellenstruktur ist vorhanden.\n"
+  },
+  {
+    "file": "18_verify_android_worksite_structure_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.056,
+    "tail": "OK: Android-Baustellenstruktur verwendet stabile Keys, Offline-Outbox und kanonischen Server-1.0-Transport.\n"
+  },
+  {
+    "file": "19_verify_schema13_track_delete_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.069,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/19_verify_schema13_track_delete_source.py\", line 65, in <module>\n    assert needle in delete_api, needle\n           ^^^^^^^^^^^^^^^^^^^^\nAssertionError: requestMethod = \"DELETE\"\n"
+  },
+  {
+    "file": "20_verify_tb_server_1_foundation.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.056,
+    "tail": "OK: TB-Server 1.0 Foundation Source-Check\n"
+  },
+  {
+    "file": "21_verify_tb_server_1_auth_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.059,
+    "tail": "OK: TB-Server 1.0 Auth/Portal foundation\n"
+  },
+  {
+    "file": "23_verify_tb_server_1_files_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.063,
+    "tail": "OK: TB-Server 1.0 files/chunk upload source contract incl. APP/PORTAL classification\n"
+  },
+  {
+    "file": "24_verify_tb_server_1_defects_acceptances_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.047,
+    "tail": "OK: TB-Server 1.0 defects/acceptances source contract\n"
+  },
+  {
+    "file": "25_verify_tb_server_1_track_survey_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.071,
+    "tail": "OK: TB-Server 1.0 immutable survey originals + file-first graphical preview + versioned track data\n"
+  },
+  {
+    "file": "26_verify_tb_server_1_idempotency_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.061,
+    "tail": "OK: TB-Server 1.0 mutation receipts / track-defect-acceptance idempotency\n"
+  },
+  {
+    "file": "27_verify_tb_server_1_replay_coverage_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.1,
+    "tail": "OK: BTB/worksite/file mutations are replay-safe\n"
+  },
+  {
+    "file": "28_verify_tb_server_1_device_auth_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.101,
+    "tail": "OK: TB-Server 1.0 device activation/auth foundation\n"
+  },
+  {
+    "file": "29_verify_tb_server_1_device_fach_auth_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.049,
+    "tail": "OK: device bearer auth is enabled only for fach API paths\n"
+  },
+  {
+    "file": "30_verify_tb_server_1_survey_parser_source.py",
+    "exit": 1,
+    "category": "ENVIRONMENT",
+    "seconds": 0.798,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/30_verify_tb_server_1_survey_parser_source.py\", line 240, in <module>\n    main()\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/30_verify_tb_server_1_survey_parser_source.py\", line 234, in main\n    verify_raw_kf_parity()\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/30_verify_tb_server_1_survey_parser_source.py\", line 54, in verify_raw_kf_parity\n    from tbserver.survey_parser import parse_survey_original\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/tbserver/survey_parser.py\", line 12, in <module>\n    from psycopg.types.json import Jsonb\nModuleNotFoundError: No module named 'psycopg'\n"
+  },
+  {
+    "file": "31_verify_tb_server_1_survey_sections_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.074,
+    "tail": "OK: TB-Server 1.0 survey section links + KM calibration\n"
+  },
+  {
+    "file": "32_verify_tb_server_1_survey_projection_source.py",
+    "exit": 1,
+    "category": "ENVIRONMENT",
+    "seconds": 0.468,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/32_verify_tb_server_1_survey_projection_source.py\", line 429, in <module>\n    main()\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/32_verify_tb_server_1_survey_projection_source.py\", line 423, in main\n    verify_gra_jump_runtime()\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/32_verify_tb_server_1_survey_projection_source.py\", line 138, in verify_gra_jump_runtime\n    from tbserver.survey_gra_jumps import GraJumpRebuildRequest, estimate_jump_station, gra_jump_candidates\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/tbserver/survey_gra_jumps.py\", line 10, in <module>\n    from psycopg.types.json import Jsonb\nModuleNotFoundError: No module named 'psycopg'\n"
+  },
+  {
+    "file": "33_verify_tb_server_1_releases_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.1,
+    "tail": "OK: TB-Server 1.0 release catalog + client compatibility contract\n"
+  },
+  {
+    "file": "34_verify_tb_server_1_btb_pdf_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.814,
+    "tail": "OK: TB-Server 1.0 BTB one-PDF/original/rework contract\n...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n"
+  },
+  {
+    "file": "35_verify_tb_server_1_company_branding_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.086,
+    "tail": "Fehlende Firmenprofil-/Logo-/PDF-Layout-Marker: PDF_RENDERER_VERSION = \"tb-server-btb-pdf-5\"\n"
+  },
+  {
+    "file": "36_verify_tb_server_1_admin_web_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.06,
+    "tail": "OK: TB-Server 1.0 portal/admin company-branding web surface\n"
+  },
+  {
+    "file": "37_verify_tb_server_1_portal_fach_ui_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.074,
+    "tail": "OK: TB-Server 1.0 portal worksite/team/BTB/defect/acceptance UI\n"
+  },
+  {
+    "file": "38_verify_tb_server_1_worksite_invitations_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.065,
+    "tail": "OK: TB-Server 1.0 targeted worksite invitation contract\n"
+  },
+  {
+    "file": "39_verify_tb_server_1_system_status_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.063,
+    "tail": "OK: TB-Server 1.0 admin system status/storage contract\n"
+  },
+  {
+    "file": "40_verify_tb_server_1_release_binary_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.053,
+    "tail": "OK: TB-Server 1.0 release binary upload/download contract\n"
+  },
+  {
+    "file": "41_verify_tb_server_1_backup_jobs_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.139,
+    "tail": "Rohe Job-Fehler muessen vor der Admin-Antwort serverseitig entfernt werden\n"
+  },
+  {
+    "file": "42_verify_tb_server_1_restore_test_reset_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.075,
+    "tail": "OK: TB-Server 1.0 restore-test + test reset safety contract\n"
+  },
+  {
+    "file": "43_verify_portal_live_refresh_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.055,
+    "tail": "PORTAL_LIVE_REFRESH_SOURCE_OK\n"
+  },
+  {
+    "file": "43_verify_tb_server_1_restore_target_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.046,
+    "tail": "Fehlende Restore-Target-Marker: action=\"RESTORE_TARGET_FAILED\"\n"
+  },
+  {
+    "file": "44_verify_tb_server_1_deployment_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.046,
+    "tail": "/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/44_verify_tb_server_1_deployment_source.py:24: SyntaxWarning: invalid escape sequence '\\$'\n  (\"\\${TB_V1_DB_PASSWORD:?\", compose),\nFehlende Server-1.0-Deployment-Marker: \\${TB_V1_DB_PASSWORD:?\n"
+  },
+  {
+    "file": "45_verify_tb_server_1_backup_retention_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.073,
+    "tail": "OK: TB-Server 1.0 backup retention contract\n"
+  },
+  {
+    "file": "46_verify_tb_server_1_invitation_only_membership_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.054,
+    "tail": "OK: TB-Server 1.0 invitation-only collaboration + helper team transfer\n"
+  },
+  {
+    "file": "47_verify_tb_server_1_invitation_qr_source.py",
+    "exit": 1,
+    "category": "ENVIRONMENT",
+    "seconds": 0.058,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/47_verify_tb_server_1_invitation_qr_source.py\", line 128, in <module>\n    main()\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/47_verify_tb_server_1_invitation_qr_source.py\", line 123, in main\n    verify_runtime()\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/47_verify_tb_server_1_invitation_qr_source.py\", line 21, in verify_runtime\n    from tbserver.invitation_links import (\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/tbserver/invitation_links.py\", line 7, in <module>\n    import qrcode\nModuleNotFoundError: No module named 'qrcode'\n"
+  },
+  {
+    "file": "48_verify_android_server_1_invitation_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.052,
+    "tail": "Fehlende Android-/Server-1.0-Einladungsmarker: WORKSITE_INVITATION_, teamApi.redeemServerInvitation(token, invitation.value)\n"
+  },
+  {
+    "file": "49_verify_tb_server_1_restore_compose_overlay_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.051,
+    "tail": "Fehlende Restore-Compose-Staging-Marker: docker-compose.v1.yml\n"
+  },
+  {
+    "file": "50_verify_android_server_1_invitation_create_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.041,
+    "tail": "OK: Android can create targeted Server-1.0 invitations with legacy fallback\n"
+  },
+  {
+    "file": "51_verify_android_server_1_team_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.035,
+    "tail": "Legacy-Team-Fallback darf nur nach Server-1.0-Unsupported erfolgen\n"
+  },
+  {
+    "file": "52_verify_android_server_1_capabilities_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.042,
+    "tail": "OK: Android Server-1.0 team/invitation cutover is capability-gated\n"
+  },
+  {
+    "file": "53_verify_android_server_1_context_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.041,
+    "tail": "Fehlende Android-Server-1.0-Kontextmarker: teamApi.loadWorksiteContexts(token), collab.replaceWorksiteContexts(contexts)\n"
+  },
+  {
+    "file": "54_verify_tb_server_1_area_scope_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.7,
+    "tail": "OK: TB-Server 1.0 defect/acceptance area-scope contract\n"
+  },
+  {
+    "file": "55_verify_tb_server_1_file_parent_visibility_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.105,
+    "tail": "OK: Server 1.0 files inherit BTB/team and defect/acceptance area visibility\n"
+  },
+  {
+    "file": "56_verify_tb_server_1_acceptance_result_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.067,
+    "tail": "Fehlende Abnahme-Ergebnis-Vertragsmarker: 'NICHT_ABGENOMMEN'\n"
+  },
+  {
+    "file": "57_verify_android_server_1_fach_read_sync_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.04,
+    "tail": "OK: Android Server-1.0 read-only defects/acceptances sync source contract\n"
+  },
+  {
+    "file": "58_verify_android_server_1_fach_write_sync_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.045,
+    "tail": "OK: Android Server-1.0 idempotent defect/acceptance write sync source contract\n"
+  },
+  {
+    "file": "59_verify_android_server_1_file_read_sync_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.043,
+    "tail": "OK: Android Server-1.0 linked file read/download source contract\n"
+  },
+  {
+    "file": "60_verify_android_server_1_file_upload_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.045,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/60_verify_android_server_1_file_upload_source.py\", line 32, in <module>\n    assert \"api, server1Api\" in bridge\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+  },
+  {
+    "file": "61_verify_android_server_1_file_snapshot_cleanup_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.053,
+    "tail": "OK: Android Server-1.0 file snapshot removes stale/hidden fach attachments\n"
+  },
+  {
+    "file": "62_verify_android_server_1_file_truncation_guard_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.044,
+    "tail": "OK: Android file cleanup supports cursor snapshots and keeps the legacy 1000-item guard\n"
+  },
+  {
+    "file": "63_verify_android_server_1_btb_read_sync_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.039,
+    "tail": "OK: Android reads granular Server-1.0 team BTBs into the existing local cache\n"
+  },
+  {
+    "file": "64_verify_android_server_1_btb_write_sync_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.044,
+    "tail": "OK: Android writes granular idempotent Server-1.0 team BTBs with per-entry conflicts\n"
+  },
+  {
+    "file": "65_verify_android_server_1_btb_granularity_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.036,
+    "tail": "OK: Android BTB sync honors the Server-1.0 granular-entry model\n"
+  },
+  {
+    "file": "66_verify_android_server_1_btb_media_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.051,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/66_verify_android_server_1_btb_media_source.py\", line 24, in <module>\n    assert \"uploadedForBtb\" in media\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+  },
+  {
+    "file": "67_verify_android_server_1_btb_final_pdf_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.047,
+    "tail": "OK: Android mirrors authoritative Server-1.0 BTB final PDFs without faking the first original\n"
+  },
+  {
+    "file": "68_verify_android_server_1_btb_delete_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.048,
+    "tail": "OK: Android Server-1.0 BTB delete reuses offline intent/outbox before normal BTB import\n"
+  },
+  {
+    "file": "69_verify_android_server_1_shared_sync_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.036,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/69_verify_android_server_1_shared_sync_source.py\", line 23, in <module>\n    assert token in coordinator, token\n           ^^^^^^^^^^^^^^^^^^^^\nAssertionError: teamApi.loadWorksiteContexts\n"
+  },
+  {
+    "file": "70_verify_tb_server_1_file_pagination_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.051,
+    "tail": "OK: Server-1.0 file list uses stable visible-file cursor pagination with legacy guard\n"
+  },
+  {
+    "file": "71_verify_server_1_worksite_tree_sync_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.167,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/71_verify_server_1_worksite_tree_sync_source.py\", line 30, in <module>\n    assert token in server, token\n           ^^^^^^^^^^^^^^^\nAssertionError: Jsonb(payload.payload)\n"
+  },
+  {
+    "file": "72_verify_android_server_1_track_data_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.042,
+    "tail": "OK: Android uses canonical Server-1.0 track-data CRUD with explicit 0.7.x fallback\n"
+  },
+  {
+    "file": "73_verify_server_1_worksite_lifecycle_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.065,
+    "tail": "OK: Server-1.0 worksite create/delete uses idempotency, soft delete and canonical tombstones\n"
+  },
+  {
+    "file": "74_verify_server_1_worksite_media_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.069,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/74_verify_server_1_worksite_media_source.py\", line 33, in <module>\n    assert server.count(\"allow_responsible_btb_images=True\") == 1\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+  },
+  {
+    "file": "75_verify_portal_worksite_tree_model_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.126,
+    "tail": "OK: Portal and Android use the same canonical Server-1.0 worksite-tree model\n"
+  },
+  {
+    "file": "76_verify_portal_fach_forms_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.041,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/76_verify_portal_fach_forms_source.py\", line 20, in <module>\n    assert f'.put(\"{key}\"' in bridge, key\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: kmVon\n"
+  },
+  {
+    "file": "77_verify_portal_fach_media_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.034,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/77_verify_portal_fach_media_source.py\", line 22, in <module>\n    assert token in portal, token\n           ^^^^^^^^^^^^^^^\nAssertionError: /api/v1/files/\n"
+  },
+  {
+    "file": "78_verify_defect_rejected_status_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.282,
+    "tail": "OK: Android ABGELEHNT round-trips canonically as Server-1.0 REJECTED\n"
+  },
+  {
+    "file": "79_verify_acceptance_delete_sync_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.065,
+    "tail": "OK: explicit offline acceptance delete intents reach canonical Server-1.0 tombstones\n"
+  },
+  {
+    "file": "80_verify_acceptance_tombstone_apply_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.034,
+    "tail": "OK: remote Server-1.0 acceptance tombstones remove local acceptances without echo deletes\n"
+  },
+  {
+    "file": "81_verify_portal_acceptance_delete_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.047,
+    "tail": "OK: Portal acceptance delete uses the same versioned Server-1.0 tombstone lifecycle\n"
+  },
+  {
+    "file": "82_verify_tb_server_1_synology_staging_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.035,
+    "tail": "OK: TB-Server 1.0 Synology staging source-mount deployment\n"
+  },
+  {
+    "file": "83_verify_android_staging_server_config_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.032,
+    "tail": "Fehlende Android-Staging-Serverkonfiguration: \"https://api.tb-helfer.de\", versionCode = 200051, versionName = \"1.3.1\"\n"
+  },
+  {
+    "file": "84_verify_device_activation_qr_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.047,
+    "tail": "OK: device activation QR/PDF flow is wired server -> portal -> Android\n"
+  },
+  {
+    "file": "85_verify_android_200052_compile_imports.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.031,
+    "tail": "Android 200052 compile import check failed: Android versionCode 200052, Android versionName 1.3.2\n"
+  },
+  {
+    "file": "85_verify_tb_server_1_user_delete_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.057,
+    "tail": "Fehlende Admin-/Benutzer-Loeschmarker: class=\"danger delete-user\"\n"
+  },
+  {
+    "file": "86_verify_android_update_client_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.047,
+    "tail": "Android updater source check failed: release notes admin, android versionCode, android versionName\n"
+  },
+  {
+    "file": "86_verify_tb_server_1_admin_overview_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.075,
+    "tail": "Fehlende Admin-Übersicht-/Metrik-Marker: Monitoring must never make an otherwise valid API request fail, \"releases\", \"survey_originals\", \"trash_items\", Speicher, Datenverkehr, Laufzeit, Probleme, Upload · 24 h, Download · 24 h, Datenverkehr · letzte 24 Stunden\n"
+  },
+  {
+    "file": "87_verify_release_admin_package_ui.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.035,
+    "tail": "Release admin package UI source check failed: draft editor\n"
+  },
+  {
+    "file": "88_verify_admin_permanent_purge_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.051,
+    "tail": "Admin purge source check failed: release draft delete UI\n"
+  },
+  {
+    "file": "89_verify_identity_global_catalog_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.034,
+    "tail": "Traceback (most recent call last):\n  File \"/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/89_verify_identity_global_catalog_source.py\", line 111, in <module>\n    assert \"versionCode = 200055\" in gradle\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+  },
+  {
+    "file": "90_verify_system_automation_email_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.088,
+    "tail": "Fehlende Automatik-/E-Mail-Marker: Bald ablaufende Nutzer\n"
+  },
+  {
+    "file": "91_verify_system_status_live_ui_source.py",
+    "exit": 1,
+    "category": "FAIL",
+    "seconds": 0.091,
+    "tail": "Fehlende Live-Systemstatus-/Job-Marker: 013_job_progress.sql\n"
+  },
+  {
+    "file": "92_verify_btb_shift_end_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.039,
+    "tail": "OK: BTB shift-end state, team-lead finalize and lead-only PDF access are wired\n"
+  },
+  {
+    "file": "93_verify_portal_btb_shift_end_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.042,
+    "tail": "OK: portal BTB uses shift-end state, helper read-only and lead-only final/PDF actions\n"
+  },
+  {
+    "file": "94_verify_portal_btb_readable_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.031,
+    "tail": "OK: portal BTB renders the readable app-like 1-8 structure without raw JSON controls\n"
+  },
+  {
+    "file": "95_verify_portal_btb_android_like_editor_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.048,
+    "tail": "OK: portal BTB matches the requested app-like 1-8 layout without JSON controls\n"
+  },
+  {
+    "file": "96_verify_portal_btb_crud_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.044,
+    "tail": "OK: portal BTB supports structured app-compatible create/edit/delete without raw JSON UI\n"
+  },
+  {
+    "file": "97_verify_portal_btb_photo_meta_dedupe_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.042,
+    "tail": "OK: portal decodes BTB photo metadata, links GPS, de-duplicates rows and fixes firm deletion\n"
+  },
+  {
+    "file": "98_verify_portal_btb_split_firms_weather_photo_sort_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.051,
+    "tail": "OK: portal separates personnel/machine firms, edits weather and groups photos by BTB points 4-8\n"
+  },
+  {
+    "file": "99_verify_btb_entry_soft_delete_recreate_source.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.038,
+    "tail": "OK: deterministic BTB entries are idempotent and soft-deleted IDs can be restored without PK 500\n"
+  },
+  {
+    "file": "shared_km_1103.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 1.811,
+    "tail": "...................\n----------------------------------------------------------------------\nRan 19 tests in 1.403s\n\nOK\n"
+  },
+  {
+    "file": "sync_audit_1103.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.209,
+    "tail": "CONFIRMED: deleted BTB detail returns 404 BTB_NOT_FOUND; Android mapping inspected separately.\nREPRODUCED: lower-ID late commit 10 is omitted after cursor 11 (MVCC double).\n....\n----------------------------------------------------------------------\nRan 4 tests in 0.033s\n\nOK\n"
+  },
+  {
+    "file": "sync_fix_1103.py",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.27,
+    "tail": "......\n----------------------------------------------------------------------\nRan 6 tests in 0.150s\n\nOK\n"
+  },
+  {
+    "file": "150_verify_restore_ui.cjs",
+    "exit": 1,
+    "category": "ENVIRONMENT",
+    "seconds": 0.783,
+    "tail": "browserType.launch: Executable doesn't exist at /home/agent/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell\n╔════════════════════════════════════════════════════════════╗\n║ Looks like Playwright was just installed or updated.       ║\n║ Please run the following command to download new browsers: ║\n║                                                            ║\n║     npx playwright install                                 ║\n║                                                            ║\n║ <3 Playwright Team                                         ║\n╚════════════════════════════════════════════════════════════╝\n    at /workspace/scratch/1e7eff4288e5/audit/combined/server/checks/150_verify_restore_ui.cjs:4:31\n    at Object.<anonymous> (/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/150_verify_restore_ui.cjs:23:3) {\n  log: [],\n  name: 'Error'\n}\n"
+  },
+  {
+    "file": "157_node_display_regression.cjs",
+    "exit": 1,
+    "category": "HARNESS_ERROR",
+    "seconds": 0.108,
+    "tail": "evalmachine.<anonymous>:12\ndocument.getElementById('renameWorksite').addEventListener('click',async function(){\n^\n\nReferenceError: document is not defined\n    at evalmachine.<anonymous>:12:1\n    at Script.runInContext (node:vm:149:12)\n    at Object.runInContext (node:vm:301:6)\n    at Object.<anonymous> (/workspace/scratch/1e7eff4288e5/audit/combined/server/checks/157_node_display_regression.cjs:32:4)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Object..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n\nNode.js v24.22.1\n"
+  },
+  {
+    "file": "158_worksite_list_live_regression.cjs",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.112,
+    "tail": "PASS: list single-flight, queued refresh, metadata filter, debounce, reconnect/focus/periodic recovery, cleanup, rename version capture\n"
+  },
+  {
+    "file": "159_btb_integration_031.cjs",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.099,
+    "tail": "BTB-INTEGRATION-031 portal detached rework, stale shift, helper and permission guard PASS (7 cases)\n"
+  },
+  {
+    "file": "160_btb_integration_1108.cjs",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.126,
+    "tail": "INTEGRATION-1108 portal grouping/text/zero-KM regression PASS (7 assertions)\n"
+  },
+  {
+    "file": "119_verify_coverage_map_logic.js",
+    "exit": 0,
+    "category": "PASS",
+    "seconds": 0.952,
+    "tail": "PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout, viewport curve labels and GVP selection/calculation/invalidation; workspace preview/save/reset guards, network point/reuse/save/CSRF, REF017 endpoint-clamp regression, independent WA/WE/WEZ sources, drag/pointer-cancel/invalid-drop and KM retention; REF018 W107W/main-line multi-hit, source failure/cancel, free and measured outside points, schema1 re-open; WMS 1.1/1.3; REF019 network-only search/station, display filters, failed reload snapshot retention, explicit link preservation; REF020 current/source view, KM reasons, reopen/preservation/invalidation, pending reference guard and switch-area hit; REF021 local/global search, route proximity, retained selection, 100-axis result cap and single/multiple-source choice; NOT a visual browser test.\n"
+  }
+]

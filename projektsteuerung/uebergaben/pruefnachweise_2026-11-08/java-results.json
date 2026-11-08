@@ -1,0 +1,22 @@
+[
+  {
+    "class": "de.tbhelfer.server.SyncActivityMonitorRegression",
+    "exit": 0,
+    "output": "PASS: 13 monitor checks, including 800 parallel run lifecycles. Not an Android/HTTP test.\n"
+  },
+  {
+    "class": "de.tbhelfer.server.ErrorHistoryRegression",
+    "exit": 0,
+    "output": "PASS: 26 error-history checks (classification, privacy, bounds, repeats, restoration). Not Android persistence/UI E2E.\n"
+  },
+  {
+    "class": "de.tbhelfer.server.SpeechDiagnosticsRegression",
+    "exit": 0,
+    "output": "SPEECH_DIAGNOSTICS_OK checks=15\n"
+  },
+  {
+    "class": "SyncPreservationRegression",
+    "exit": 0,
+    "output": "PASS: Unicode, idempotent retry, safe paths, immutable revisions, disk error, corrupt copy, 20 concurrent revisions, no temp leak.\n"
+  }
+]

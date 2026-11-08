@@ -1,5 +1,22 @@
 # TB-Helfer – verbindliche Projektregeln
 
+
+## Synology-Arbeitsweg SERVER
+
+Für praktische Arbeiten auf der Synology gilt als Standardweg:
+
+1. aktuellen SERVER-Stand über **GitHub Desktop** auf den PC holen;
+2. benötigte Dateien/Ordner über **Synology File Station** nach `/volume1/docker/tb-helfer-v1` hochladen bzw. ersetzen;
+3. Projekte/Container ausschließlich über **Synology Container Manager** stoppen, neu erstellen und starten;
+4. notwendige Diagnose-/Migrationsbefehle im **Terminal des jeweiligen Containers** (`api`, `worker`, `db`) ausführen;
+5. **kein NAS-SSH als Standardarbeitsweg**; SSH nur auf ausdrücklichen Benutzerwunsch;
+6. `.env`, Secrets, Datenbank-/Storage-Verzeichnisse und Backup-Verzeichnisse beim Datei-Upload niemals überschreiben oder löschen.
+
+Bei Deployment-Anleitungen für SERVER sind daher File Station + Container Manager + Container-Terminal zu bevorzugen.
+
+## Prüfstand08.11.2026
+Die folgenden Fachregeln bleiben verbindlich. Zielregeln sind nicht automatisch Implementierungsnachweise. Tatsächlicher Stand, offene Vertragslücken und Teststufen stehen in `projektsteuerung/01_MASTERSTATUS.md` bis `07_OFFENE_PUNKTE.md`; frühere Fassungen unter `projektsteuerung/archiv/GESAMTPRUEFUNG_2026-11-08/`. Aktuelle Bereinigung ändert keinen Produktcode und keine geschützte Abnahme.
+
 ## 0. Gemeinsame Projektsteuerung
 
 Die gemeinsame Projektsteuerung liegt ausschließlich unter `projektsteuerung/`.
@@ -31,6 +48,18 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 ## 1. Grundarchitektur
 - Synology/NAS ist zentrale Serverinstanz und Source of Truth.
 - Android arbeitet offline mit lokalen Kopien und synchronisiert nur benötigte Daten.
+- **Sofort-Sync ist bereichsbezogen, kein Vollsync:** Eine lokale Fachänderung stößt nur den betroffenen Bereich an. Beispiel: BTB-Textänderung → nur dieser BTB; BTB-Foto → dieser BTB + seine Medien; Mangel → dieser Mangel (+ Bilder); Abnahme → diese Abnahme (+ Anlagen); Baustellenbaum → nur Baum; Streckendaten → nur betroffene Datensätze.
+- Ein **Vollabgleich** bleibt bewusst für `Neu laden`, Erst-/Reaktivierung, Baustellenbeitritt, ausdrückliche manuelle Aktualisierung und Recovery nach inkonsistentem Cursor/Konflikt verfügbar. Er darf nicht mehr der normale Sofortpfad nach jedem Autosave sein.
+- Mehrere schnelle Änderungen werden entprellt und dauerhaft zusammengefasst. Ein bereits wartender Sync darf eine später hinzugekommene Dirty-Markierung nicht verlieren.
+- Eingehende Änderungen werden über den Server-Change-Feed/Cursor erkannt und anschließend objektbezogen nachgeladen; Change-Signale enthalten IDs/Versionen statt große Gesamtsnapshots.
+- Die Android-Auswahl **`stündlich / täglich / manuell` entfällt**. Kleine Fach-/Metadaten-Deltas laufen automatisch, sobald Netz verfügbar ist; ein Benutzer soll für normalen Mehrgerätebetrieb keinen Sync-Button benötigen.
+- `Neu laden` bleibt als bewusster **Recovery-/Vollabgleich**, nicht als normaler Sync-Modus.
+- Netz-/Datenregeln werden künftig nach Datenart getrennt: kleine Fach-Deltas automatisch; größere Medien/Originalarchive dürfen eigene WLAN-/Mobilfunkregeln haben.
+- **Lastziel 15×15:** Architektur und Tests müssen mindestens 15 verantwortliche TBs mit jeweils 15 Helfern unterstützen (= 240 mobile Nutzer) sowie zusätzlich 15 gleichzeitig offene Portal-/Laptop-Sitzungen (= 255 aktive Clients als Planungsfall).
+- Mobile Geräte dürfen für dieses Lastziel **nicht** dauerhaft den heutigen 2-Sekunden-SSE-Pollingpfad verwenden. Geschlossene/ruhende Android-Geräte werden nur mit einem inhaltsfreien Push-Wecksignal angestoßen und holen anschließend den dauerhaften Change-Feed; App-Start/Resume, Netz-Rückkehr und ein kleiner periodischer Delta-Fallback sichern verpasste Pushs ab.
+- BTB-Änderungen werden im Fanout **teambezogen** behandelt. Ein BTB eines verantwortlichen TBs soll nur dessen Team (TB + Helfer), nicht pauschal alle Geräte der Baustelle, wecken.
+- Mehrere Wecksignale/Änderungen werden pro Gerät kurz zusammengefasst und mit kleinem Jitter abgeholt, damit bei vielen gleichzeitig aktiven Nutzern keine unnötige Lastspitze entsteht.
+- Portal-/Laptop-Änderungen verwenden dieselben kanonischen Fachendpunkte und erzeugen denselben Change-Feed wie Geräteänderungen. Offene Portalansichten dürfen live aktualisieren, aber ohne pro Browser alle 2 Sekunden eine neue DB-Verbindung zu erzeugen.
 - Originale Vermessungsdateien (z. B. TRA, GRA, KF, KOR) bleiben unverändert und dauerhaft nachvollziehbar.
 - Bearbeitete/berechnete Abschnitte werden getrennt und nachvollziehbar gespeichert.
 - Cloudflare/TLS für normale App-Synchronisation; Tailscale nur Wartung/Notfall.
@@ -55,12 +84,16 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 
 ## 2a. Admin-Oberfläche – bestehende Bedienlogik als Referenz
 - Die bestehende TB-Helfer-Administration 0.7 ist **Bedien-Referenz** für Server 1.0. Server 1.0 darf technisch anders aufgebaut sein, soll bewährte Admin-Abläufe aber nicht ohne fachlichen Grund neu erfinden.
-- Die Hauptnavigation bleibt fachlich getrennt in mindestens: **Übersicht, Strecken, Bahnhöfe, Benutzer, Firmen, Geräte, Dateien, Baustellen, App-Versionen, Papierkorb, Systemstatus**. Eine vorübergehende kombinierte Entwicklungsseite wie `Nutzer/Geräte` ersetzt diese Zielstruktur nicht.
+- Das öffentliche Benutzerportal läuft unter **`https://www.tb-helfer.de`**. Die App-/API-Basis **`https://api-v1.tb-helfer.de`** bleibt davon getrennt; Geräteaktivierung und mobile Syncpfade werden nicht auf die Portal-Domain umgebogen. Portal-Aktivierungslinks und Browser-Baustelleneinladungen verwenden die Portal-Domain.
+- Die Hauptnavigation führt gemäß Benutzerfreigabe REF-DATA-019 (04.10.2026) **Übersicht, Streckennetz, Firmen, App-Versionen und Systemstatus**. Unter Streckennetz bleiben Karte/Bestand, Bahnhof-/Strecken-Stammdaten, Import/Originale/Prüffälle und Änderungen erreichbar. Benutzer, Geräte und Baustellen werden im bestehenden Firmen-Arbeitsbereich verwaltet. Funktionen und historische Daten bleiben erhalten.
 - **App-Versionen** verwendet den vorhandenen Release-Katalog. Der Admin soll eine Release-Info-Datei (`.md`/`.txt`) und die APK/Binärdatei sichtbar auswählen können. Die Release-Datei darf Version, Build, Mindestbuild, Pflichtupdate sowie die Abschnitte `Neu`, `Verbessert`, `Behoben` enthalten. Nach dem Einlesen bleiben alle Angaben im Draft auf dem Server editierbar; veröffentlicht wird erst nach bewusster Prüfung. Eine zweite Update-Infrastruktur wird nicht aufgebaut.
 - **Übersicht** zeigt mindestens die zentralen Zähler für Strecken, Bahnhöfe, Gleise/Weichen, Baustellen, Originaldateien, Benutzer, Geräte, App-Versionen und Papierkorb sowie Firmen-/Benutzerzusammenfassung, Baustellenzusammenfassung, Serverversion, Speicherbelegung und Serverzeit.
 - Die **Übersicht Server 1.0** zeigt zusätzlich verbindlich: gesamten/freien NAS-Speicher in verständlicher GB/GiB-Darstellung, HTTP-Upload und -Download der letzten 24 Stunden, API-Laufzeit/Online-seit, erkannte Probleme/Warnungen sowie ein 24-Stunden-Datenverkehrsdiagramm. Diese Werte müssen aus realen Servermetriken stammen und dürfen keine statischen Demo-Werte sein.
 - Stündliche HTTP-Metriken werden serverseitig datensparsam aggregiert (`request_count`, `error_count`, `bytes_in`, `bytes_out`); es werden dafür keine Request-Inhalte, Tokens oder personenbezogenen Payloads gespeichert.
 - **Systemstatus / Automatik** übernimmt die bewährte Bedienlogik des alten Servers: automatische DATABASE-/FILES-/FULL-Backups mit Uhrzeit, automatische Retention, einstellbare Aufbewahrungsdauer/Mindestanzahl, E-Mail-Systemberichte (täglich/wöchentlich/monatlich), Zeitzone, Warnzeitraum für ablaufende Nutzer, Speicherwarnschwelle, Testbericht sowie sichtbare Audit-/Sicherheitsereignisse.
+- **Systemstatus 1.0 bleibt kompakt und verständlich:** technische Jobzustände werden im Admin deutsch dargestellt (`PENDING = Wartet`, `RUNNING = Läuft`, `DONE = Fertig`, `FAILED = Fehlgeschlagen`). Laufende Background Jobs zeigen einen vom Worker gespeicherten Fortschritt mit Prozent und aktuellem Arbeitsschritt; die Anzeige aktualisiert sich automatisch.
+- **Job-/Fehlerhistorie:** erledigte oder fehlgeschlagene Background-Job-Einträge dürfen administrativ aus dem Job-Verlauf entfernt werden; wartende/laufende Jobs niemals. HTTP-/Systemwarnungen dürfen quittiert werden, ohne Messwerte oder Audit-Nachweise zu löschen. Audit bleibt als Sicherheits-/Nachvollziehbarkeitsnachweis erhalten.
+- **Systemstatus-Bedienung:** Backup-/Job-/Auditinformationen werden kompakt zusammengeführt; selten benötigte Bereiche wie Firmenübersicht, Automatik und ablaufende Nutzer dürfen einklappbar sein, damit die Seite nicht durch dauerhaft lange Listen unübersichtlich wird.
 - SMTP-Zugangsdaten sind Server-Secrets. Host/Port/Absender und der Zustand „Passwort gesetzt“ dürfen im Admin angezeigt werden; das SMTP-Passwort selbst wird **niemals** in PostgreSQL, `server_settings`, Audit, MD/XLSX, Logs oder HTML gespeichert/ausgegeben.
 - Automatische Backup-/Reportläufe werden ausschließlich über den bestehenden Background-Worker und deduplizierte Zeitplan-Slots ausgeführt; die bewährten manuellen Backup-/Restore-Test-Pfade werden dadurch nicht ersetzt.
 - **Benutzer** und **Geräte** bleiben getrennte Admin-Bereiche.
@@ -73,6 +106,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Ein **Baustellen-Purge** entfernt die komplette Baustellen-Fachstruktur einschließlich Teams, BTBs, Mängel, Abnahmen, baustellenbezogener Dateien und Upload-Zwischenstände. Das ist ausdrücklich stärker als normales lokales Entfernen/Soft-Delete.
 - Ein **Firmen-Purge** entfernt in staging/test die Firma samt ihren Benutzern, Geräten, Baustellen, Dateien und Firmen-Vermessungsoriginalen in einem bewusst bestätigten Schritt. In `production` blockiert der normale Firmen-Purge, sobald geschützte Vermessungsoriginale vorhanden sind; diese Schutzregel bleibt nach dem ersten produktiven Originalimport verbindlich.
 - **Release-Drafts** dürfen komplett gelöscht werden, einschließlich bereits hochgeladener Draft-Binärdatei. Ein bereits `PUBLISHED` oder `RETIRED` Release bleibt nachvollziehbar und wird nicht hart gelöscht; veröffentlichte Releases werden nur zurückgezogen.
+- Zurückgezogene/`RETIRED` Releases werden in der normalen App-Versionen-Ansicht standardmäßig als **Archiv ausgeblendet** und können bei Bedarf über „Archivierte anzeigen“ eingeblendet werden. Dadurch bleibt die veröffentlichte Update-Historie nachvollziehbar, ohne die normale Release-Liste zu überladen.
 - Ein aktives Gerät wird im Gerätebereich über **Freigeben** gelöst. Die Benutzer-Aktivierungskarte kann einen weiteren noch unbenutzten Aktivierungs-Key erzeugen, ohne bereits ausgegebene offene 30-Tage-Keys allein dadurch zu widerrufen. Erst die erste erfolgreiche Gerätebindung verbraucht den verwendeten Key und widerruft die übrigen offenen Aktivierungs-Keys desselben Benutzers. Ein bereits gebundenes Gerät bleibt aktiv, bis es ausdrücklich im Gerätebereich freigegeben wird.
 - Der Benutzerbereich bietet pro Benutzer die Aktion **Aktivierungskarte**. Die Aktivierungskarte zeigt Name, Firma, Zugriff, Klartext-Aktivierungs-Key und QR-Code sowie die Hinweise zur ersten Gerätebindung und zum sicheren Geräte-Token.
 - Die Aktivierungskarte hat die Aktionen **Drucken / als PDF speichern** und **Zurück zu Benutzer**. Eine direkt herunterladbare PDF darf ergänzend angeboten werden.
@@ -102,6 +136,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Beim administrativen Anlegen eines Benutzers genügen Firma, Vorname, Nachname, Firmenrolle und optionale Zugriffsgültigkeit. Der Server erzeugt einen vorläufigen eindeutigen Portal-Login.
 - Bei der **ersten Portal-Aktivierung** legt der Benutzer seinen eigenen eindeutigen Login, Anzeigenamen, Passwort sowie persönliche E-Mail/Telefon fest.
 - Der Admin darf Firmenzuordnung, Vor-/Nachname als administrative Stammdaten, Firmenrolle und Zugriffsgültigkeit bearbeiten. Ein Firmenwechsel wird blockiert, sobald Baustellen-/Teamhistorie vorhanden ist.
+- Die Zugriffsgültigkeit wird im Admin **ohne Uhrzeiteingabe** gepflegt. Angeboten werden mindestens **3 Monate, 6 Monate, 1 Jahr und Manuell**; bei Manuell wird nur der letzte gültige Kalendertag gewählt. Der Zugang bleibt diesen Tag vollständig gültig und endet in der Server-Betriebszeitzone **Europe/Berlin am Folgetag um 00:01 Uhr**.
 - Nach erfolgter Portal-Aktivierung überschreibt eine normale Admin-Bearbeitung nicht den selbst gepflegten Login, Anzeigenamen oder persönliche E-Mail/Telefon.
 - Persönliche Kontakte sind für aktive Benutzer derselben Firma sichtbar; andere Firmen erhalten sie nicht.
 
@@ -114,6 +149,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Einladungen enthalten keine Benutzer-Keys/Passwörter, sondern kurzlebige/widerrufbare Tokens.
 - A/B/C/D bleibt rein technisch und wird Benutzern nicht angezeigt.
 - `QR scannen` und `Nutzer hinzufügen` gehören direkt in die Baustellenansicht.
+- Der direkte Baustellen-QR-Scanner muss den modernen Server-1.0-Link **`tbhelfer://worksite-invite?token=...`** case-sensitiv verarbeiten und während der Übergangszeit zusätzlich den Legacy-Link **`tbhelfer://invite?code=TBI-...`** akzeptieren. Moderne Tokens dürfen niemals uppercased werden.
 - Rolle kommt aus der Einladung und wird nach dem Scan nicht erneut gewählt.
 - Nach Beitritt wird eine bereits aktive andere Baustelle nicht ungefragt ersetzt; die App fragt `Jetzt öffnen?` / `Später`.
 - Verantwortliche TBs erhalten vollständige gemeinsame Baustellenstruktur und benötigte Streckendaten.
@@ -127,6 +163,21 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - BTB ist NICHT baustellenweit gemeinsam.
 - Jeder verantwortliche TB besitzt mit seinen Helfern seinen eigenen gemeinsamen BTB-Bereich.
 - Helfer desselben TB-Teams bearbeiten denselben BTB; andere verantwortliche TB-Teams bleiben getrennt.
+- **Schichtende ist zweistufig:** Jeder am BTB beteiligte Nutzer kann nur seinen eigenen Beitrag mit `Schicht fertig` / `Beitrag fertig` markieren. Das speichert/synchronisiert seine letzten Fachänderungen und kleinen Bild-Sync-Versionen, beendet aber den gemeinsamen BTB nicht.
+- Nur der **verantwortliche Haupt-TB / Teamleiter** besitzt die Aktion `BTB endgültig abschließen`. Erst diese Aktion führt den bestehenden fachlichen BTB-Abschluss/PDF-/Original-Snapshot-Prozess aus.
+- Der Haupt-TB sieht pro beteiligtem Nutzer den Schichtstatus (mindestens `ARBEITET`, `FERTIG`, optional `NICHT_BETEILIGT`). Normalerweise soll der endgültige Abschluss erst erfolgen, wenn alle tatsächlich beteiligten Nutzer `FERTIG` sind; fehlende Nutzer müssen sichtbar genannt und ein bewusster Ausnahmeabschluss ausdrücklich bestätigt werden.
+- **Portal-BTB-Darstellung:** Die Browseransicht folgt der fachlichen Android-Struktur. `1. Berichtszeit`, `2. Wetter` sowie `3. Personal / Geräte` sind kompakt/einklappbar; Personal und Geräte stehen auf breiten Bildschirmen nebeneinander und lassen sich getrennt öffnen. Die Abschnitte **4. Ausgeführte Arbeiten, 5. Abnahmen, 6. Einweisung / Unterweisung, 7. Besonderheiten, 8. Mängel / Schäden** sind immer sichtbar, auch wenn sie leer sind. Ein eigener sichtbarer Abschnitt `Notizen` / `Weitere Angaben` existiert fachlich nicht: Androids internes Feld `notizen` gehört zu **4. Ausgeführte Arbeiten** und wird dort angezeigt. Fotos dürfen separat einklappbar sein.
+- Im normalen Portal gibt es **keine Roh-JSON-/Sortierungs-/Versions-Bearbeitung**. Portal-Bearbeiten verwendet fachliche Felder; technische Android-Metadaten bleiben intern. Ein technischer Diagnose-Editor ist kein Bestandteil der normalen Benutzeroberfläche.
+- Das Portal muss in denselben fachlichen BTB-Bereichen wie Android **Hinzufügen, Bearbeiten und Löschen** erlauben. Neue Portal-Einträge verwenden den bestehenden granularen Android-Vertrag (`_tb_android_managed`, `_tb_android_slot`) mit denselben Slotmustern für Firma, Personal, Geräte, Arbeiten sowie Abschnitte 5–8; keine parallelen Portal-Sonderdatensätze. Das Löschen einer Firma behandelt die zugehörigen Personal-/Geräte-/Arbeitszeilen bewusst mit.
+- BTB-Fotos im Portal zeigen vorhandene fachliche Metadaten (Aufnahmezeit, KM, Firma, Kurztext, Objekt/Bereich, GPS soweit vorhanden). GPS-Koordinaten sind anklickbar. Bereits hochgeladene Android-Fotos mit `BTBP1__` werden rückwirkend aus dem bestehenden kompakten Metadatenblock gelesen; dafür werden keine Originalbilder neu hochgeladen.
+- Exakte Doppelzeilen und doppelte Foto-Links sollen in der normalen BTB-Ansicht nicht doppelt erscheinen. Beim Portal-Anlegen identischer Fachzeilen wird der zweite identische Eintrag abgewiesen; persistierte Alt-Dubletten werden zunächst nur in der Anzeige dedupliziert, nicht blind gelöscht.
+- `Schicht fertig` ist serverseitiger Team-/BTB-Status und muss sowohl in App als auch Portal/Laptop sichtbar sein. Ein Nutzer darf seinen eigenen Beitrag vor dem endgültigen Haupt-TB-Abschluss bewusst wieder öffnen; nach endgültigem BTB-Abschluss gelten die bestehenden Nachbearbeitungsregeln.
+- Die App kennt die Rolle aus der aktivierten Benutzeridentität + Baustellenmitgliedschaft + Teamzuordnung. Für den **Helfer** wird die bisherige sichtbare Aktion `BTB Abschluss` durch **`Schicht Ende`** ersetzt. Sie finalisiert niemals den gemeinsamen BTB.
+- Nach `Schicht Ende` wird der Helfer-BTB-Bereich für diesen Nutzer zunächst schreibgeschützt; bis zum endgültigen Haupt-TB-Abschluss kann der Nutzer bewusst `Schicht fortsetzen` wählen und seinen Status wieder auf `ARBEITET` setzen.
+- `Schicht Ende` gilt auf dem Server erst als **`FERTIG`**, wenn die letzten Fachänderungen, Bildmetadaten und kleinen Bild-Sync-Versionen erfolgreich bestätigt wurden. Ohne Netz darf die App lokal `Schichtende vorgemerkt / Sync ausstehend` anzeigen; der Haupt-TB darf diesen Nutzer serverseitig noch nicht als vollständig fertig sehen.
+- **Helfer erhalten keine BTB-PDF-Bedienung:** kein `PDF Entwurf`, kein `PDF öffnen`/Abschluss-PDF und kein PDF-Viewer-Einstieg aus dem BTB. PDF-Erzeugung/-Anzeige gehört zum verantwortlichen Haupt-TB/Teamleiter.
+- Die PDF-Sperre ist nicht nur UI: Der Server benötigt ein eigenes PDF-Leserecht bzw. eine Teamleiterprüfung; `btb.view` allein darf künftig keinen Zugriff auf das Abschluss-PDF geben. Im geprüften Serverstand08.11.2026 erzwingt `GET /api/v1/btbs/{btb_id}/final-pdf` bereits die Teamleiterprüfung; aktuelle Geräte-/NAS-Abnahme bleibt separat erforderlich.
+- Der für Helfer weiterhin benötigte **Originalbilder-Export** am Schichtende ist eine eigene Funktion und darf nicht an PDF-/BTB-Exportrechte gekoppelt werden.
 - Ein BTB wird nur bewusst über `Neuer BTB` angelegt. Bloßes Öffnen erzeugt keinen Entwurf und keine Tag-/Nacht-Leerplätze.
 - Jeder neue BTB erhält eine **dauerhafte stabile `btbId`**. Diese `btbId` bleibt beim Bearbeiten, Datums-/Zeitänderungen und Abschließen immer erhalten.
 - Datum, Beginn, Ende und ggf. abgeleitete Tag/Nacht-Anzeige sind Attribute, nicht Identität.
@@ -169,7 +220,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - PDF-Dateiname bleibt für dieselbe fachliche `btbId` stabil/merge-sicher; keine `_V1`, `_V2`, `_V100` und keine `(2)`-Ausweichnamen für fachlich verschiedene BTBs.
 - Historische Alt-BTBs mit Tag/Nacht-/Version-Dateien bleiben lesbar; beim nächsten modernen Abschluss werden sie in das neue Ein-PDF-Verhalten überführt.
 - `PDF öffnen` im BTB-Verlauf öffnet den App-eigenen PDF-Viewer.
-- `ZIP teilen` im BTB-Verlauf ist als **Tagesabschluss-ZIP** zu verstehen: für den Kalendertag des gewählten BTB werden die vorhandenen Baustellen-Daten gemeinsam exportiert (BTBs, Bilder, Mängel, Abnahmen und Gesamtlisten). Es ist nicht mehr nur ein Einzel-BTB-ZIP.
+- Der aktuelle Export trennt den **lokalen Einzel-BTB-ZIP** (ohne verpflichtenden Online-Katalogabruf) vom **Baustellen-Gesamtexport/Tagesabschluss** mit BTBs, Bildern, Mängeln, Abnahmen und Gesamtlisten. Die frühere pauschale Gleichsetzung jeder BTB-ZIP-Aktion mit dem Gesamtexport ist durch INTEGRATION-1108/EXPORT-1108B überholt; Word bleibt unverändert.
 
 ### BTB-Fotos
 - Neue normale BTB-Fotos werden zusätzlich eindeutig der beim Speichern aktiven `btbId` zugeordnet.
@@ -186,10 +237,15 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Datum/Uhrzeit bleiben Anzeige/Sortierung, nicht technische Foto-BTB-Zuordnung.
 - Mängel-/Abnahme-Zuordnungen bleiben als eigene Fachbeziehungen bestehen.
 - Allgemeine BTB-Bilder eines Helfers werden nicht automatisch auf alle Helfergeräte verteilt; Server + verantwortlicher TB + Erstellergerät wie beschlossen.
+- **Mobiles Foto-Original bleibt auf dem Aufnahmegerät.** Der normale Server-Sync überträgt nicht das volle Kameroriginal, sondern eine für BTB/Portal geeignete Sync-Version plus Thumbnail und strukturierte Metadaten/Bildlisten-Eintrag.
+- Richtwert für die mobile Sync-Version: längste Bildkante ca. **1920 px**, JPEG ca. **80–82 %**, niemals hochskalieren; Thumbnail ca. **512 px**. Die exakten Werte dürfen nach praktischem Qualitäts-/Lasttest angepasst werden.
+- Bildlisten werden über Metadaten vollständig synchronisiert, auch wenn das Volloriginal nur lokal vorhanden ist. Jedes Foto besitzt eine stabile Foto-ID und eindeutige BTB-/Benutzerzuordnung, damit Laptop-/USB-Zusammenführung kollisionsfrei bleibt.
+- Neue normale Baustellenfotos aus **Portal/Laptop** werden vor der Übertragung im Browser verkleinert. Das Original bleibt auf dem PC/Laptop; der Server speichert nur die kleine Version, maximal **2.000.000 Bytes**. Die Servergrenze gilt auch für neue mobile Fotos; die automatische Android-Anpassung bleibt eigener Folgeauftrag. Bestehende größere Serverbilder werden nicht ungefragt umgeschrieben oder gelöscht. Keine Mindestdateigröße und kein Hochskalieren. Auf mobile Geräte werden nur Thumbnail/kleine Sync-Version verteilt.
+- Die manuelle Originalübergabe am Schichtende (Handy → Laptop/USB → verantwortlicher TB) ist vom normalen Online-Sync getrennt. Sie blockiert den fachlichen BTB-Abschluss nicht, solange Textdaten, Bildmetadaten und kleine Sync-Versionen vollständig auf dem Server bestätigt sind.
 
 ### Merge-sichere ZIP-/Laptop-Struktur
 - Baustellen-Gesamtexport/Tagesabschluss besitzt als oberste Struktur `TB-Helfer/<Baustelle>/...` bzw. die bestehende exportierte Baustellenstruktur.
-- Ein Tagesabschluss-ZIP umfasst mindestens BTB, Bilder, Mängel, Abnahmen sowie die vorhandenen Gesamtlisten wie `Bilderliste_gesamt.csv/.xlsx`, Mängel- und Abnahmelisten.
+- Ein Tagesabschluss-ZIP umfasst mindestens BTB, Bilder, Mängel, Abnahmen sowie die vorhandenen Gesamtlisten wie die portable Gesamt-Fotoliste als `.xlsx` (die zusätzliche Gesamtbilder-CSV entfällt gemäß EXPORT-1108B), Mängel- und Abnahmelisten.
 - Viele Exporte dürfen in einen gemeinsamen Laptop-Hauptordner `TB-Helfer` zusammengeführt werden.
 - Unterschiedliche `btbId` dürfen niemals denselben Zielpfad erhalten.
 - Derselbe fachliche BTB erhält bei wiederholtem Export denselben stabilen Dokumentnamen; das aktuelle Dokument ersetzt dort den älteren Stand desselben BTB.
@@ -233,7 +289,6 @@ Admin-Auswahl mindestens:
 - Ein normales App-Update darf gespeicherte Serveridentität, Geräte-Token, Aktivierung und lokale Baustellendaten nicht löschen. Ein neuer Geräte-QR ist nur bei Freigabe/Neuinstallation/verlorenen App-Daten nötig.
 
 
-
 ## 9. Android Release-Begleitdatei – verbindlich
 Für **jeden neuen Android-Build/Release**, der gebaut, getestet, in GitHub übergeben oder im Server-Releasekatalog verwendet wird, muss eine passende Release-Begleitdatei unter `projektsteuerung/releases/` vorhanden sein.
 
@@ -256,3 +311,10 @@ Verbindliche Konsistenz:
 - Vor Upload/Veröffentlichung immer APK + Release-MD desselben Builds verwenden.
 
 Diese Datei ist Teil jeder Build-/Release-Übergabe und darf künftig nicht vergessen werden.
+
+
+## RIGHTS-002 – Admin ohne Baustellen-Fachverwaltung (05.10.2026)
+- Benutzerfreigabe 17:33/17:35: Baustellen werden von Firma/Nutzern über Portal bzw. App geführt und bleiben auf dem Server. Systemadmin legt keine Baustellen an, öffnet/bearbeitet keine Fachinhalte. Nur reduzierte Firmenliste zur vollständigen ausdrücklichen Löschung einer Baustelle bleibt.
+- UI und direkte Admin-/Fach-API-Pfade entsprechend begrenzen; Portal-/Geräterechte berechtigter Firmenbenutzer und gemeinsamer Fachkatalog bleiben erhalten. Bestehende Daten werden durch den Umbau nicht gelöscht. Destruktive Ausführung nur nach Vorschau und ausdrücklicher Bestätigung, bestehende Purge-Infrastruktur prüfen.
+- RIGHTS-001: Benutzer meldet 17:24 funktioniert. Keine zusätzliche Bestätigung für gesperrte/abgelaufene Sessions oder vollständige Endpunktmatrix daraus ableiten.
+- Umsetzung/Tests/Deployment für RIGHTS-002 noch offen; Android bleibt unverändert.
