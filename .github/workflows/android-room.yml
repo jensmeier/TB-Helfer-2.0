@@ -1,4 +1,4 @@
-name: Android Room migration and atomic receive
+name: Android Room migration and atomic receive tests
 on:
   push:
     branches: [ "feature/tb-android-2.0" ]
