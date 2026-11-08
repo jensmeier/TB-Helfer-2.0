@@ -1,5 +1,9 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+## INTEGRATION-1108 – APK-Bau erneut ausdrücklich beauftragt
+Nutzer: „bauen“. Quellstände Android49b66e67 und Serverd9e85bf2 geprüft, keine neuen Runtimeänderungen. Vorheriger Download über services.gradle.org scheiterte wiederholt. Nächster konkreter Versuch: dieselbe Gradle9.3.1-Distribution direkt aus offizieller gradle/gradle-distributions-GitHub-Veröffentlichung, SHA256 aus deren Assetmetadaten fest pinnen. Version/Tests unverändert, Budget unverändert; gezielter APK-Build mit zugehöriger Release-MD. Kein Deployment oder produktiver Schreibzugriff.
+
+
 ## INTEGRATION-1108 – Umsetzung dokumentiert, Abnahme offen
 Stand 08.11.2026: Android-/Serveränderungen implementiert. Android-Build am Gradle-Download blockiert, keine APK. Servercontainer und Portal/Recovery/Rechte-CI bestanden; Foundation-Versionserwartung lokal korrigiert. Keine vollständige grüne Gesamt-CI, kein NAS-Deployment oder Geräte-E2E. Vollständiger Nachweis und nächste Schritte: [INTEGRATION_1108.md](uebergaben/INTEGRATION_1108.md).
 
