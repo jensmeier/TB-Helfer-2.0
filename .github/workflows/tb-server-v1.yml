@@ -48,7 +48,7 @@ jobs:
       - name: Checkout pinned Android contract partner
         uses: actions/checkout@v4
         with:
-          ref: 0a6f9af4f750c43dac63a6f66e5e0c0c7332293c
+          ref: fe8e4f3f873837b06344386ccdc1a4c1cfc64e8f
           path: .ci/android-source
       - name: Use actual Android sources for cross-contract checks
         run: |
