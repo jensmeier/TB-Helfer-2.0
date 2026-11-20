@@ -200,17 +200,18 @@ class FotoDetailFragment : Fragment() {
             orientation = LinearLayout.VERTICAL
             setPadding(padding, padding, padding, 0)
         }
-        fun feld(label: String, value: String, multi: Boolean = false): EditText =
+        fun feld(label: String, value: String, multi: Boolean = false, autocorrect: Boolean = true): EditText =
             EditText(requireContext()).apply {
                 hint = label
                 setText(value)
-                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or
-                    InputType.TYPE_TEXT_FLAG_AUTO_CORRECT or
-                    if (multi) InputType.TYPE_TEXT_FLAG_MULTI_LINE else 0
+                inputType = InputType.TYPE_CLASS_TEXT or
+                    (if (autocorrect) InputType.TYPE_TEXT_FLAG_AUTO_CORRECT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+                     else InputType.TYPE_TEXT_FLAG_CAP_WORDS) or
+                    (if (multi) InputType.TYPE_TEXT_FLAG_MULTI_LINE else 0)
                 if (multi) minLines = 3
                 fields.addView(this)
             }
-        val firm = feld("Firma", foto.firma)
+        val firm = feld("Firma", foto.firma, autocorrect = false)
         val short = feld("Kurztext", foto.kurztext)
         val notes = feld("Ausführlicher BTB-/Word-Text", foto.notiz.orEmpty(), true)
         MaterialAlertDialogBuilder(requireContext())
