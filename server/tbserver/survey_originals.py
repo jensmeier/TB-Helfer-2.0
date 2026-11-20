@@ -233,7 +233,11 @@ def import_survey_original_from_file(
             # The raw file still has to belong to the same company/worksite context.
             context = worksite_context(cur, user, file_row["worksite_id"])
             require_permission(context, "track.edit")
-            _load_file_for_user(cur, user, payload.file_id)
+            # The uploader may contribute its own file even when the legacy
+            # RESPONSIBLE_TB permission profile has no files.view entry.
+            # Other people's attachments must pass normal file visibility.
+            if file_row["created_by"] != user["user_id"]:
+                _load_file_for_user(cur, user, payload.file_id)
             if file_row["company_id"] != context["company_id"]:
                 raise HTTPException(403, "FILE_COMPANY_MISMATCH")
 

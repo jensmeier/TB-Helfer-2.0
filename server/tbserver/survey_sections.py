@@ -444,18 +444,32 @@ def list_survey_sections(
     with transaction() as conn, conn.cursor() as cur:
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "worksite.view")
-        cur.execute(
-            """
-            SELECT id, worksite_id, worksite_node_id, dataset_key, dataset_kind, route_number, track_key,
-                   payload, version, source_original_id, created_by, created_at, updated_at
-            FROM tb.track_data
-            WHERE worksite_id = %s AND dataset_kind = %s AND deleted_at IS NULL
-            ORDER BY dataset_key
-            LIMIT %s
-            """,
-            (worksite_id, SECTION_KIND, limit),
-        )
-        rows = [dict(row) for row in cur.fetchall() if track_data_visible(context, dict(row))]
+        # Restrict results only AFTER applying visibility. Fetch in bounded
+        # batches so hidden earlier rows cannot exhaust the caller's limit.
+        rows: list[dict[str, Any]] = []
+        offset = 0
+        batch_size = min(500, max(100, limit))
+        while len(rows) < limit:
+            cur.execute(
+                """
+                SELECT id, worksite_id, worksite_node_id, dataset_key, dataset_kind, route_number, track_key,
+                       payload, version, source_original_id, created_by, created_at, updated_at
+                FROM tb.track_data
+                WHERE worksite_id = %s AND dataset_kind = %s AND deleted_at IS NULL
+                ORDER BY dataset_key
+                LIMIT %s OFFSET %s
+                """,
+                (worksite_id, SECTION_KIND, batch_size, offset),
+            )
+            batch = [dict(row) for row in cur.fetchall()]
+            for row in batch:
+                if track_data_visible(context, row):
+                    rows.append(row)
+                    if len(rows) == limit:
+                        break
+            offset += len(batch)
+            if len(batch) < batch_size:
+                break
     return {"survey_sections": rows}
 
 
