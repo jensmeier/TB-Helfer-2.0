@@ -1637,29 +1637,8 @@ cardCurrentReport.setOnClickListener {
             if (newBtbUseMaschinen && previewFirmen.any { it.visibleInMaschinen }) btnNewBtbUseMaschinen.text = "Bearbeiten"
         }
 
-        private fun computeAutoWeatherTimesFor(start: String?, ende: String?): List<String> {
-            fun parse(time: String?): Int? {
-                val p = time?.trim()?.split(":") ?: return null
-                val h = p.getOrNull(0)?.toIntOrNull() ?: return null
-                val m = p.getOrNull(1)?.toIntOrNull() ?: return null
-                return h * 60 + m
-            }
-            fun fmt(min: Int): String {
-                val mm = (min % (24 * 60) + (24 * 60)) % (24 * 60)
-                val h = mm / 60
-                val m = mm % 60
-                return String.format("%02d:%02d", h, m)
-            }
-            val sMin = parse(start)
-            val eMinRaw = parse(ende)
-            if (sMin == null || eMinRaw == null) return emptyList()
-            val eMin = if (eMinRaw < sMin) eMinRaw + 24 * 60 else eMinRaw
-            val span = (eMin - sMin).coerceAtLeast(1)
-            val t1 = roundUpToQuarterMinutes(sMin + span / 6)
-            val t2 = roundUpToQuarterMinutes(sMin + span / 2)
-            val t3 = roundUpToQuarterMinutes(sMin + (span * 5) / 6)
-            return listOf(fmt(t1), fmt(t2), fmt(t3))
-        }
+        private fun computeAutoWeatherTimesFor(start: String?, ende: String?): List<String> =
+            BtbWeatherPolicy.shiftSlots(start, ende)
 
         private fun currentNewBtbFirmen(): List<FirmaBlock> = newBtbPreparedFirmen ?: newBtbProposal?.firmen.orEmpty()
 

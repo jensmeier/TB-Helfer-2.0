@@ -4,6 +4,25 @@ import java.time.Duration
 import java.time.LocalDateTime
 
 object BtbWeatherPolicy {
+    /** Explicit start, midpoint and end, also when the shift crosses midnight. */
+    fun shiftSlots(start: String?, end: String?): List<String> {
+        fun minutes(raw: String?): Int? {
+            val parts = raw?.trim()?.split(':') ?: return null
+            if (parts.size != 2) return null
+            val hour = parts[0].toIntOrNull() ?: return null
+            val minute = parts[1].toIntOrNull() ?: return null
+            return if (hour in 0..23 && minute in 0..59) hour * 60 + minute else null
+        }
+        val from = minutes(start) ?: return emptyList()
+        val finish = minutes(end) ?: return emptyList()
+        val finishAbsolute = if (finish <= from) finish + 24 * 60 else finish
+        val middle = from + (finishAbsolute - from) / 2
+        return listOf(from, middle, finishAbsolute).map { value ->
+            val minute = value % (24 * 60)
+            String.format(java.util.Locale.ROOT, "%02d:%02d", minute / 60, minute % 60)
+        }
+    }
+
     fun coordinates(lat: Double?, lon: Double?): Pair<Double, Double>? =
         if (lat != null && lon != null && lat.isFinite() && lon.isFinite() && lat in -90.0..90.0 && lon in -180.0..180.0) lat to lon else null
 
