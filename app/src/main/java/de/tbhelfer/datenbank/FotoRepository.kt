@@ -203,6 +203,47 @@ class FotoRepository(
         return id
     }
 
+    /**
+     * Corrections are durable in Room and BTB overrides until a versioned
+     * server acknowledgement. No original bytes or photo ids are changed.
+     * An immutable finalized BTB cannot be edited without entering REWORK.
+     */
+    suspend fun updateBeschriftung(id: Long, firma: String, kurztext: String, notiz: String?): Boolean =
+        withContext(Dispatchers.IO) {
+            val foto = dao.fotoMitId(id) ?: return@withContext false
+            val normalizedFirma = firma.trim().take(200)
+            val normalizedKurztext = kurztext.trim().take(500)
+            val normalizedNotiz = notiz?.trim()?.take(2000)?.takeIf(String::isNotBlank)
+            if (foto.firma == normalizedFirma && foto.kurztext == normalizedKurztext &&
+                foto.notiz == normalizedNotiz) return@withContext true
+            val ctx = appContext
+            val btbId = ctx?.let { BtbFotoZuordnungSpeicher.btbId(it, id) }
+            if (ctx != null && btbId != null) {
+                check(BtbServerStateStore.state(ctx, btbId)?.readOnly != true) {
+                    "BTB ist schreibgeschützt. Bitte den BTB erst zur Nachbearbeitung öffnen."
+                }
+                invalidiereFotoAbschlussWennNoetig(ctx, foto.baustelleId, btbId)
+                val previous = BtbPhotoContextOverrideStore.load(ctx, btbId)[id]
+                BtbPhotoContextOverrideStore.setOverride(
+                    ctx, btbId, id,
+                    (previous ?: BtbPhotoContextOverrideStore.ContextOverride(
+                        firma = foto.firma, objektKennung = foto.objektKennung,
+                        objektBereich = foto.objektBereich
+                    )).copy(firma = normalizedFirma, kurztext = normalizedKurztext,
+                        notiz = normalizedNotiz ?: "")
+                )
+            }
+            check(dao.updateBeschriftung(id, normalizedFirma, normalizedKurztext, normalizedNotiz) == 1) {
+                "Foto wurde während der Bearbeitung entfernt."
+            }
+            if (ctx != null) {
+                BtbPhotoMetadatenStore.notifyChanges()
+                if (btbId != null) SofortSync.btbAnstossen(ctx, foto.baustelleId, btbId)
+                else SofortSync.anstossen(ctx)
+            }
+            true
+        }
+
     suspend fun updateNotizMitIds(ids: List<Long>, notiz: String?): Int = withContext(Dispatchers.IO) {
         dao.updateNotizMitIds(ids, notiz)
     }

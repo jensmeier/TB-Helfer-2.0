@@ -65,6 +65,10 @@ interface FotoDao {
     @Query("UPDATE foto SET baustellenKnotenId = :knotenId WHERE id IN (:ids)")
     suspend fun updateBaustellenKnotenMitIds(ids: List<Long>, knotenId: Long?): Int
 
+    /** Keep the physical image and stable id; edit text fields only. */
+    @Query("UPDATE foto SET firma = :firma, kurztext = :kurztext, notiz = :notiz WHERE id = :id")
+    suspend fun updateBeschriftung(id: Long, firma: String, kurztext: String, notiz: String?): Int
+
     @Delete
     suspend fun loeschen(entity: FotoEntity): Int
 }

@@ -27,7 +27,9 @@ object BtbPhotoContextOverrideStore {
         /** Kanonische geräteübergreifende Unterbaustellenreferenz. */
         val worksiteNodeKey: String? = null,
         /** Fachlicher BTB-Punkt des Fotos; Datei/GPS/Aufnahmezeit bleiben unverändert. */
-        val bildtyp: Bildtyp? = null
+        val bildtyp: Bildtyp? = null,
+        val kurztext: String? = null,
+        val notiz: String? = null
     )
 
     private const val DIR_NAME = "btb_photo_context_overrides"
@@ -61,7 +63,9 @@ object BtbPhotoContextOverrideStore {
                     worksiteNodeKey = value.optString("worksiteNodeKey", "")
                         .trim().takeIf { it.isNotBlank() },
                     bildtyp = value.optString("bildtyp", "").trim().takeIf { it.isNotBlank() }
-                        ?.let { runCatching { Bildtyp.valueOf(it) }.getOrNull() }
+                        ?.let { runCatching { Bildtyp.valueOf(it) }.getOrNull() },
+                    kurztext = if (value.has("kurztext")) value.optString("kurztext") else null,
+                    notiz = if (value.has("notiz")) value.optString("notiz") else null
                 )
             }
             out
@@ -117,6 +121,8 @@ object BtbPhotoContextOverrideStore {
         return foto.copy(
             baustellenKnotenId = nodeId,
             firma = value.firma.trim(),
+            kurztext = value.kurztext ?: foto.kurztext,
+            notiz = value.notiz ?: foto.notiz,
             bildtyp = value.bildtyp ?: foto.bildtyp,
             objektKennung = value.objektKennung?.trim()?.takeIf { it.isNotBlank() },
             objektBereich = value.objektBereich?.trim()?.takeIf { it.isNotBlank() }
@@ -144,6 +150,8 @@ object BtbPhotoContextOverrideStore {
                 value.ortId?.let { put("ortId", it) }
                 put("worksiteNodeKey", value.worksiteNodeKey?.trim().orEmpty())
                 put("bildtyp", value.bildtyp?.name.orEmpty())
+                value.kurztext?.let { put("kurztext", it) }
+                value.notiz?.let { put("notiz", it) }
             })
         }
         root.put("overrides", obj)

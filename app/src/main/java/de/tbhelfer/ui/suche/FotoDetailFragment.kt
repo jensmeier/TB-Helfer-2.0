@@ -7,6 +7,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.text.InputType
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -42,6 +46,7 @@ class FotoDetailFragment : Fragment() {
     private lateinit var btnShare: Button
     private lateinit var btnMaps: Button
     private lateinit var btnCopy: Button
+    private lateinit var btnEdit: Button
 
     private var currentFoto: FotoEntity? = null
 
@@ -58,6 +63,7 @@ class FotoDetailFragment : Fragment() {
         btnShare = v.findViewById(R.id.btnShare)
         btnMaps = v.findViewById(R.id.btnMaps)
         btnCopy = v.findViewById(R.id.btnCopy)
+        btnEdit = v.findViewById(R.id.btnEdit)
         return v
     }
 
@@ -177,6 +183,7 @@ class FotoDetailFragment : Fragment() {
                 }
             }
 
+            btnEdit.setOnClickListener { zeigeBearbeiten(foto) }
             btnCopy.setOnClickListener {
                 val clipText = tvMeta.text?.toString().orEmpty()
                 val clipboard = requireContext().getSystemService(ClipboardManager::class.java)
@@ -184,6 +191,49 @@ class FotoDetailFragment : Fragment() {
                 Toast.makeText(requireContext(), "Kopiert", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun zeigeBearbeiten(foto: FotoEntity) {
+        val padding = (16 * resources.displayMetrics.density).toInt()
+        val fields = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(padding, padding, padding, 0)
+        }
+        fun feld(label: String, value: String, multi: Boolean = false): EditText =
+            EditText(requireContext()).apply {
+                hint = label
+                setText(value)
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or
+                    InputType.TYPE_TEXT_FLAG_AUTO_CORRECT or
+                    if (multi) InputType.TYPE_TEXT_FLAG_MULTI_LINE else 0
+                if (multi) minLines = 3
+                fields.addView(this)
+            }
+        val firm = feld("Firma", foto.firma)
+        val short = feld("Kurztext", foto.kurztext)
+        val notes = feld("Langtext / Notiz", foto.notiz.orEmpty(), true)
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Foto korrigieren")
+            .setMessage("Originalbild und Aufnahmezeit bleiben unverändert. Änderungen werden beim nächsten BTB-Abgleich an den Server übertragen.")
+            .setView(fields)
+            .setNegativeButton("Abbrechen", null)
+            .setPositiveButton("Speichern") { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val newFirm = firm.text?.toString().orEmpty()
+                    val newShort = short.text?.toString().orEmpty()
+                    val newNotes = notes.text?.toString()
+                    try {
+                        val saved = ServiceLocator.fotoRepository.updateBeschriftung(foto.id, newFirm, newShort, newNotes)
+                        if (saved) {
+                            tvTitle.text = newShort.trim().ifBlank { SucheFotoFormatter.labelBildtyp(foto.bildtyp) }
+                            Toast.makeText(requireContext(), "Foto lokal korrigiert. Serverabgleich wird angestoßen.", Toast.LENGTH_LONG).show()
+                        } else Toast.makeText(requireContext(), "Foto nicht mehr vorhanden.", Toast.LENGTH_LONG).show()
+                    } catch (error: Exception) {
+                        Toast.makeText(requireContext(), error.message ?: "Änderung konnte nicht gespeichert werden.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            .show()
     }
 
     private fun openExtern(file: File) = sendExtern(file, open = true)

@@ -715,6 +715,8 @@ class BtbTeamMediaSync(context: Context) {
         return foto.copy(
             baustellenKnotenId = nodeId,
             firma = value.firma.trim(),
+            kurztext = value.kurztext ?: foto.kurztext,
+            notiz = value.notiz ?: foto.notiz,
             bildtyp = value.bildtyp ?: foto.bildtyp,
             objektKennung = value.objektKennung?.trim()?.takeIf { it.isNotBlank() },
             objektBereich = value.objektBereich?.trim()?.takeIf { it.isNotBlank() }
@@ -737,6 +739,8 @@ class BtbTeamMediaSync(context: Context) {
                 worksiteNodeKey?.trim()?.takeIf { it.isNotBlank() }
             )
             patch.put("typ", (contextOverride.bildtyp ?: foto.bildtyp).name)
+            contextOverride.kurztext?.let { patch.put("kurztext", it) }
+            contextOverride.notiz?.let { patch.putNullable("notiz", it.takeIf(String::isNotBlank)) }
             patch.putNullable(
                 "objektKennung",
                 contextOverride.objektKennung?.trim()?.takeIf { it.isNotBlank() }

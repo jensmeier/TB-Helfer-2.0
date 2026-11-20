@@ -28,6 +28,13 @@
         android:paddingTop="8dp"
         android:textSize="14sp" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnEdit"
+        style="@style/TbButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Firma und Bildtexte bearbeiten" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
