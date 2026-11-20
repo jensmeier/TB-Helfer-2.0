@@ -10,6 +10,9 @@ import java.security.MessageDigest
 
 /** Immutable raw bytes and a durable upload queue; never replace a source by derived samples. */
 object SurveyOriginalOutbox {
+    internal fun deliveryKey(hash: String, localWorksiteId: Long?): String =
+        localWorksiteId?.takeIf { it > 0L }?.let { "$hash:$it" } ?: hash
+
     @Synchronized fun retain(context: Context, name: String, bytes: ByteArray, localWorksiteId: Long? = null) {
         val extension = name.substringAfterLast('.', "").uppercase()
         if (extension !in setOf("TRA", "GRA", "TRG", "KOR", "KF", "KV", "CSV", "TXT")) return
@@ -23,7 +26,9 @@ object SurveyOriginalOutbox {
             catch (error: Exception) { atomic.failWrite(stream); throw error }
         }
         val preferences = context.getSharedPreferences("survey_original_queue", Context.MODE_PRIVATE)
-        if (!preferences.contains(hash)) check(preferences.edit().putString(hash, JSONObject()
+        // Raw bytes are content-addressed, but delivery is per worksite.
+        val queueKey = deliveryKey(hash, localWorksiteId)
+        if (!preferences.contains(queueKey)) check(preferences.edit().putString(queueKey, JSONObject()
             .put("name", File(name).name).put("kind", extension).put("local_worksite_id", localWorksiteId ?: JSONObject.NULL).toString()).commit())
         TrackSyncWorker.enqueue(context)
     }
@@ -37,19 +42,23 @@ object SurveyOriginalOutbox {
         val sent = context.getSharedPreferences("survey_original_sent_${de.tbhelfer.server.recovery.RecoveryProtocol.owner(token)}", Context.MODE_PRIVATE)
         val axes = dao.alleAchsen()
         val contexts = bindings.contextsWithBindings()
-        for ((hash, raw) in queue.all) {
-            if (sent.contains(hash) || raw !is String) continue
+        for ((queueKey, raw) in queue.all) {
+            if (sent.contains(queueKey) || raw !is String) continue
+            val hash = queueKey.substringBefore(':')
             val metadata = JSONObject(raw)
             val sourceName = metadata.getString("name")
-            val matching = axes.filter { (it.dateiSignatur?.let(hash::startsWith) == true) }.mapNotNull { it.baustelleId }.toSet() + listOfNotNull(
-                metadata.optLong("local_worksite_id", 0L).takeIf { it > 0L })
+            val explicitWorksite = metadata.optLong("local_worksite_id", 0L).takeIf { it > 0L }
+            // A known import worksite is authoritative. Never mix other axes with it.
+            val matching = if (explicitWorksite != null) setOf(explicitWorksite) else
+                axes.filter { it.dateiSignatur?.let(hash::startsWith) == true }
+                    .mapNotNull { it.baustelleId }.toSet()
             val targets = contexts.filter { it.localWorksite?.altBaustelleId in matching }
                 .distinctBy { it.context.worksiteServerId }
             if (targets.size != 1) continue // no silent assignment to an unrelated worksite
             val target = targets.single()
             val file = File(context.filesDir, "survey-originals/$hash.bin")
             val pendingFiles = context.getSharedPreferences("survey_original_files_${de.tbhelfer.server.recovery.RecoveryProtocol.owner(token)}", Context.MODE_PRIVATE)
-            val fileId = pendingFiles.getString(hash, null) ?: run {
+            val fileId = pendingFiles.getString(queueKey, null) ?: run {
             val uploaded = Server1FileApi().uploadLinkedFile(token, target.context.worksiteServerId,
                 "WORKSITE", target.context.worksiteServerId, sourceName, "application/octet-stream", file, hash)
             val uploadedId = when (uploaded) {
@@ -57,7 +66,7 @@ object SurveyOriginalOutbox {
                 is Server1FileApi.UploadResult.Error -> error(uploaded.message)
                 else -> error("Vermessungsoriginal konnte noch nicht übertragen werden.")
             }
-            check(pendingFiles.edit().putString(hash, uploadedId).commit())
+            check(pendingFiles.edit().putString(queueKey, uploadedId).commit())
             uploadedId
             }
             val body = JSONObject().put("file_id", fileId).put("data_kind", metadata.getString("kind"))
@@ -74,7 +83,7 @@ object SurveyOriginalOutbox {
             check(parsed.optString("status") == "PARSED") {
                 "Vermessungsoriginal gespeichert; Parser meldet ${parsed.optString("status")}: ${parsed.optString("error_code")}."
             }
-            check(sent.edit().putString(hash, original).commit()) { "Originalbestätigung konnte nicht gespeichert werden." }
+            check(sent.edit().putString(queueKey, original).commit()) { "Originalbestätigung konnte nicht gespeichert werden." }
         }
     }
 }
