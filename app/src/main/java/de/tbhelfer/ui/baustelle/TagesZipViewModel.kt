@@ -13,7 +13,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.zip.ZipInputStream
 
 class TagesZipViewModel(private val savedState: SavedStateHandle) : ViewModel() {
     val speicherStatus = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
@@ -67,20 +66,7 @@ class TagesZipViewModel(private val savedState: SavedStateHandle) : ViewModel() 
                 // Reject incomplete/corrupt archives before Android shares a
                 // supposedly successful daily export. Never mutate originals.
                 withContext(Dispatchers.IO) {
-                    ZipInputStream(file.inputStream().buffered()).use { archive ->
-                        var count = 0
-                        val seen = hashSetOf<String>()
-                        val buffer = ByteArray(64 * 1024)
-                        while (true) {
-                            val entry = archive.nextEntry ?: break
-                            count++
-                            check(seen.add(entry.name)) { "ZIP enthält doppelte Einträge" }
-                            // ZipInputStream verifies CRC when an entry is exhausted.
-                            while (archive.read(buffer) != -1) { /* stream, never buffer entire photo */ }
-                            archive.closeEntry()
-                        }
-                        check(count > 0) { "ZIP enthält keine Dateien" }
-                    }
+                    TagesZipPruefung.pruefen(file)
                 }
                 file
             } catch (cancelled: CancellationException) {
