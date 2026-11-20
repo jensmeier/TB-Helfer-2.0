@@ -44,3 +44,12 @@ Benutzer hat GitHub-Bereinigung ohne Verlust historischer Nachweise, synchrone A
 - F-01/F-02/F-04/F-06 SERVER und F-07 ANDROID: Korrekturcode bereits vorhanden, gezielte neue Regressionen prüfen, nicht allein CI-Summary vertrauen.
 - Android 20/21→22 und vorhandene App-Signatur: BLOCKIERT bis realer Testbestand vorliegt. Keine Deinstallation als Abkürzung.
 - Synology-Deployment/Pixel/Poco-E01–E12: NICHT AUSGEFÜHRT. Vorbereitungs- und Nachweisliste in `uebergaben/PRUEF_1120_1_BIS_5.md`.
+
+## Nachweise und aktueller Arbeitsblock PRUEF-1120-1BIS5 (20.11.2026)
+- Bereits abgeschlossen: Android CI 44643311256 BESTANDEN (Build, Lint, Unit und Serververtrag am gepinnten Codepartner); Server CI 44643317730 BESTANDEN (Foundation + Snapshot/255-Client-Gate).
+- Server neue gezielte Tests: `server/tests/test_kompat_1120_regressions.py`, Commit `e49e9a4698539479b1198cd42c60140b4a081789`, CI 44645336085 BESTANDEN (KM-Scope, Originalimport, Paginierung).
+- Zusätzlich: echter Datei-Upload-Pfad mit erzwungenem Post-Commit-Cleanup-Fehler, Testcommit `4fbc47c5d7d64afc82129c030cb13260148e8639`, CI-Lauf 44645761732 bei Anlage noch NICHT als bestanden bestätigt.
+- Android: `SurveyOriginalOutboxTest.kt` für stabile pro-Baustelle-Originalauftragsschlüssel, Commit `1a4184b392d9fd4239fbce9fc67017232f03f495`, CI-Lauf 44645898340 bei Anlage noch NICHT als bestanden bestätigt.
+- F-03 und F-05 unverändert OFFEN: globaler/firmeneigener Katalog und das team-/bereichsbezogene Rechtekonzept müssen gemeinsam geprüft werden; kein blindes Schließen der Datenzugriffe.
+- Punkte 3–5: Geräte-Signatur und Room 20/21, Synology-Inventar/Deploymentvorbereitung sowie E01–E12 in `projektsteuerung/uebergaben/PRUEF_1120_1_BIS_5.md` detailliert dokumentiert. INSTALLIERT, DEPLOYT, E2E BESTÄTIGT: NICHT NACHGEWIESEN.
+- Keine APK/NAS/Produktivdaten geändert, keine Migration ausgeführt. Nachfolgende CI-Ergebnisse nur nach Original-Runner-Steps bestätigen.
