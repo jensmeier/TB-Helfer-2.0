@@ -1,20 +1,18 @@
 # TB-HELFER – MASTERSTATUS
-Stand 08.11.2026 – Umsetzung GESAMT-1108 nach ausdrücklichem Bauauftrag.
-SERVER-Teststand `b924da3e9bbff603a78ca55753cefb439f1ac607`, Fachcode `b17530d305797837d42f3049681f10cd919ea4b5`.
-ANDROID-Fach-/APK-Stand `cda78c2f42fd7b1acd76d60612ce42d882662edf`, 1.3.46 / 200096; nachfolgender Instrumentierungsstand `680ef37e9781eb4e4b0b8da04b5db7e6b2d42340`.
-Nachfolgende Dokumentationscommits verändern diese Fachstände nicht.
-[Aktueller Bericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [vorherige Statusfassungen](archiv/UMSETZUNG_2026-11-08_VORHER/01_MASTERSTATUS.md).
+Stand 20.11.2026 · Auftrag KOMPAT-1120 · GITHUB AKTUELLER ARBEITSSTAND
 
-Android BUILD BESTANDEN und gesamter CI-Lauf42495975421 BESTANDEN am Baucommit cda78c2f42fd7b1acd76d60612ce42d882662edf. 245 Unit-Tests in35Suiten,0Fehler/0übersprungen; Lint0Fehler/391Warnungen. APK1.3.46/200096 und exakt passende Release-MD heruntergeladen; Manifest/Commit/SHA256 gegengeprüft.
-Server BUILD/CI BESTANDEN: vollständiger Lauf42496224535 am b924da3e9bbff603a78ca55753cefb439f1ac607 gegen Android cda78c2f42fd7b1acd76d60612ce42d882662edf. 66 Unit-Tests,100 Foundation-Prüfskripte,24Migrationen in frischer PostgreSQL-Testumgebung, Authentifizierungsablauf, Container-/Snapshot-/Restore-/Rechte-/Recoverygate sowie255Sync-Wait-Verbindungen erfolgreich. Kein produktiver NAS-Test.
-Room INSTRUMENTIERUNG BESTANDEN: Lauf42496070087 am680ef37e9781eb4e4b0b8da04b5db7e6b2d42340, Android15/API35-Emulator,2/2Tests. Echtes Room/SQLite: additive Migration19→22 erhält Achse; Geometrie+Journal rollen bei Ausnahme zusammen zurück und werden bei Erfolg gemeinsam bestätigt; Journale sind nach Owner getrennt. Kein Pixel-/Poco-/NAS-Netzwerktest.
-Offen: gemeinsame Trassen-/KM-Löschabsichten und Konfliktoberfläche; KM-Sprünge und GVP-/Mast-Bearbeitung; vollständiger objektweiser Fachdelta-/globaler Katalogfeed; Offline-Android-Nachlauf der 16h-Frist; experimentelle Android-DB 20/21; alter Installationssignierschlüssel und reale NAS-/Pixel-/Poco-E2E. Kein NAS-Deployment, kein Merge, keine produktive Migration oder Datenänderung ausgeführt.
+## Verbindliches vorangegangenes CI-Basispaar (nicht mit den neuen Commits verwechseln)
+- ANDROID: 1.3.46 / 200096, Fachcommit cda78c2f42fd7b1acd76d60612ce42d882662edf; Room-Instrumentierung 680ef37e9781eb4e4b0b8da04b5db7e6b2d42340. Android CI 42495975421 / Room CI 42496070087 BESTANDEN.
+- SERVER: 1.0.0-dev / API v1 / PDF 6, Fachcode b17530d305797837d42f3049681f10cd919ea4b5, Testcommit b924da3e9bbff603a78ca55753cefb439f1ac607. Server CI 42496224535 BESTANDEN.
+- Keine neue APK/versionCode, keine Migration oder NAS-Installation aus diesem Auftrag; E01–E12 unverändert E2E OFFEN.
 
-Geschützt und erhalten: Word, drei Bilder pro Reihe, gespeicherte Fotoanzahl, stabile IDs und Originale sowie historische BESTÄTIGT/PASST/FUNKTIONIERT/ERLEDIGT-Markierungen. Neue Tests sind keine erneute pauschale Praxisbestätigung. Ungeprüfte ältere Restaufträge bleiben im Archiv offen zur Einordnung.
+## Neue Entwicklungscommits, Prüfstatus getrennt
+- SERVER: 06191e1315d36d319f68705220c3488c55565276 (F-01/F-02/F-04 Codeänderung), 4b4065658d744a9773ca06d2b4af53c737056c02 (F-06 und Freigabekompatibilität), Workflow-Partnerpin 94fe87251c936c42807f2e60ee6c2c808b45d5a8 gegen Android 5d5c0f7fd8834a48a70d342efdc46c05bd5744fd.
+- ANDROID: 5d5c0f7fd8834a48a70d342efdc46c05bd5744fd (F-07 Codeänderung), Workflow-Partnerpin 6e321e7e8aad4464dd6768376e65943b9cda26f1 gegen Server 4b4065658d744a9773ca06d2b4af53c737056c02.
+- Die revisionsgenauen CI-Läufe für diese finale Codepaarung wurden gestartet; im Zeitpunkt dieser Statussicherung noch NICHT als BESTANDEN bestätigt. Kein E2E.
+- F-01/F-02/F-04/F-06/F-07: QUELLCODE GEÄNDERT, Regression/CI/Gerätebestätigung noch getrennt nachzuweisen. F-03 (Changefeed-Metadaten) und F-05 (firmenweite Rohoriginalsichtbarkeit): OFFEN, nicht als erledigt deklarieren.
+- Bekannte offene Punkte bleiben geschützt: Room 20/21, KM-Sprünge, Konflikt-UI/GVP-Mast, Offline-16h, Originale älterer Geräte und fehlende Signaturkontinuität.
 
-PR6 offen/Draft, PR11 offen/kein Draft; beide mergeable=false/dirty, kein Merge.
-Für die10zugeordneten CI-Läufe wurden20Jobversuche mit zusammen53,23Minuten gemessener Joblaufzeit erfasst, einschließlich Fehlern/Wiederholungen. Das sind Laufzeitdaten, keine Abrechnung. Tatsächlich berechnete Minuten, Monatsverbrauch und Freiminutenrest bleiben mangels Billingzugriff OFFEN. Zusatzbudget0USD unverändert; keine Einsparung behauptet.
-
-
-## KOMPAT-1120 – gemeinsamer Entwicklungsauftrag (20.11.2026)
-Benutzer hat GitHub-Bereinigung ohne Verlust historischer Nachweise, synchrone Android-/Server-Statusführung und gezielte Fehlerkorrekturen freigegeben. Basis: Android 1.3.46/200096 Fachcommit cda78c2f42fd7b1acd76d60612ce42d882662edf, Server 1.0.0-dev/API v1/PDF 6 Testcommit b924da3e9bbff603a78ca55753cefb439f1ac607. Basispaarung ist keine reale Pixel/Poco/NAS-Abnahme. Neue fachliche Commits gesondert ausweisen. E01–E12 bleiben offen. Keine NAS-/Produktivdatenänderung. Neue Fehler F-01 bis F-07 in 09_KOMPATIBILITAETSBASIS.md, Altbestätigungen und Archiv behalten.
+## Regeln und Freigaben
+Die beiden Arbeitsbranches bleiben getrennt. Fachänderungen und CI-Paarungs-SHAs sind exakt zu vergleichen. GitHub != NAS != Pixel/Poco. Word, drei Fotos pro Zeile, Anzahl-Einstellung, stabile IDs, lokale Originale und historisch BESTÄTIGT/PASST/FUNKTIONIERT/ERLEDIGT sind geschützt. Keine NAS-Änderung, keine produktiven Daten verändert.
+Verbindliche Details: 00_START_HIER.md, 02_AKTIVER_AUFTRAG.md, 05_ANDROID_SERVER_VERTRAG.md, 06_E2E_TESTSTATUS.md, 07_OFFENE_PUNKTE.md, 09_KOMPATIBILITAETSBASIS.md. Ältere Stände bleiben im Git-Verlauf, dem Archiv und der Übergabe vom 08.11. nachvollziehbar.
