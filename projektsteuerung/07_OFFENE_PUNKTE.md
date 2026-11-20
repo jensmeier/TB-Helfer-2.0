@@ -60,3 +60,11 @@ Benutzer hat GitHub-Bereinigung ohne Verlust historischer Nachweise, synchrone A
 - Kein neuer versionCode/versionName; das zuvor dokumentierte Release 1.3.46/200096 darf nicht als mit den Teständerungen gebaut oder installiert bezeichnet werden.
 - F-03/F-05 bleiben OFFEN; erfordern erst eine sichere Abgrenzung der gemeinsamen GLOBAL-/COMPANY-Katalogsicht gegenüber privaten Baustellen-/Team-/KM-Rechten. Genaue Abnahmematrix: `projektsteuerung/uebergaben/PRUEF_1120_1_BIS_5.md`.
 - Synology-Deploy, reale Pixel-/Poco-Installationssignatur, Datenbank 20/21 und E01–E12 weiterhin **OFFEN**. GitHub/CI ersetzt diese E2E-Nachweise nicht.
+
+
+## FACH-1120 – neu beauftragte Prüfungen (nicht automatisch Fehler!)
+- ANDROID: Texteingabe/Tastatur-Korrekturen und Fachwörter, Spracheingabe/Entwurfsbestätigung, Fotoeditor und lokale Änderungsvormerkung.
+- ANDROID + SERVER: korrigierbare Foto-Firma, Kurztext/Langtext, Zuordnung und Metadaten über alle Geräte; Schreib-/Leserechte, Konfliktschutz, PDF/Word/XLSX/ZIP.
+- ANDROID + SERVER: Tages-/Gesamt-Bildlisten XLSX, Mängel-/Abnahmeliste, Dateipfade nach Ordnerkopie, keine unerwünschte Gesamt-CSV; ZIP-Erstellung und Suche Bilder/BTB vollständig prüfen.
+- ANDROID + SERVER: Wetter bei Schichtbeginn UND Schichtende; Temperatur, Niederschlagsmenge einschließlich 0,0 mm und Wetterlage; Unterschiede zwischen Android Direktabruf und Servervorschlag; Übernahme nach BTB/Word. Benutzer meldet derzeit Wetterfehler, genaue Ursache OFFEN.
+- E2E-Pixel/Poco/Synology sowie isolierte Regressionsnachweise ausstehend; bekannte gelöste Fehler nicht erneut als offen behandeln. Vollständiger Auftrag unter `projektsteuerung/uebergaben/FACH_1120_TEXT_FOTO_ZIP_WETTER.md`.
