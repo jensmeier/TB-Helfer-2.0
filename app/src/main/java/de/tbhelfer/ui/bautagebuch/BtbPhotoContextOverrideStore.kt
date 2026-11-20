@@ -1,6 +1,7 @@
 package de.tbhelfer.ui.bautagebuch
 
 import android.content.Context
+import android.util.AtomicFile
 import de.tbhelfer.datenbank.Bildtyp
 import de.tbhelfer.datenbank.FotoEntity
 import org.json.JSONObject
@@ -39,9 +40,10 @@ object BtbPhotoContextOverrideStore {
         val id = btbId?.trim().orEmpty()
         if (id.isBlank()) return mutableMapOf()
         val file = fileFor(context, id)
-        if (!file.exists()) return mutableMapOf()
         return runCatching {
-            val root = JSONObject(file.readText(StandardCharsets.UTF_8))
+            // AtomicFile restores the .bak copy after an interrupted write.
+            val text = AtomicFile(file).openRead().bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
+            val root = JSONObject(text)
             val obj = root.optJSONObject("overrides") ?: JSONObject()
             val out = linkedMapOf<Long, ContextOverride>()
             val keys = obj.keys()
@@ -155,12 +157,14 @@ object BtbPhotoContextOverrideStore {
             })
         }
         root.put("overrides", obj)
-        val tmp = File(file.parentFile, file.name + ".tmp")
-        tmp.writeText(root.toString(), StandardCharsets.UTF_8)
-        if (file.exists()) file.delete()
-        if (!tmp.renameTo(file)) {
-            tmp.copyTo(file, overwrite = true)
-            tmp.delete()
+        val atomic = AtomicFile(file)
+        val stream = atomic.startWrite()
+        try {
+            stream.write(root.toString().toByteArray(StandardCharsets.UTF_8))
+            atomic.finishWrite(stream)
+        } catch (error: Exception) {
+            atomic.failWrite(stream)
+            throw error
         }
     }
 

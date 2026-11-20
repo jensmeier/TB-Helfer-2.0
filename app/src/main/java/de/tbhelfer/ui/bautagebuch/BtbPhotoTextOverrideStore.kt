@@ -1,6 +1,7 @@
 package de.tbhelfer.ui.bautagebuch
 
 import android.content.Context
+import android.util.AtomicFile
 import org.json.JSONObject
 import java.io.File
 import java.nio.charset.StandardCharsets
@@ -36,10 +37,9 @@ object BtbPhotoTextOverrideStore {
         schicht: SchichtTyp
     ): MutableMap<Long, String> {
         val f = fileForRead(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht)
-        if (!f.exists()) return mutableMapOf()
-
         return try {
-            val txt = f.readText(StandardCharsets.UTF_8)
+            // Recover the previous valid JSON if the app was killed during save.
+            val txt = AtomicFile(f).openRead().bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
             if (txt.isBlank()) return mutableMapOf()
             val root = JSONObject(txt)
             val obj = root.optJSONObject("overrides") ?: JSONObject()
@@ -77,9 +77,7 @@ object BtbPhotoTextOverrideStore {
         schicht: SchichtTyp,
         overrides: Map<Long, String>
     ) {
-        val dir = File(context.filesDir, DIR_NAME).apply { mkdirs() }
         val f = fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht)
-        val tmp = File(dir, f.name + ".tmp")
 
         val root = JSONObject().apply {
             put("version", VERSION)
@@ -99,9 +97,15 @@ object BtbPhotoTextOverrideStore {
         }
         root.put("overrides", obj)
 
-        tmp.writeText(root.toString(), StandardCharsets.UTF_8)
-        if (f.exists()) f.delete()
-        tmp.renameTo(f)
+        val atomic = AtomicFile(f)
+        val stream = atomic.startWrite()
+        try {
+            stream.write(root.toString().toByteArray(StandardCharsets.UTF_8))
+            atomic.finishWrite(stream)
+        } catch (error: Exception) {
+            atomic.failWrite(stream)
+            throw error
+        }
     }
 
     /** text == null/blank => Override entfernen. */
@@ -220,7 +224,7 @@ object BtbPhotoTextOverrideStore {
         val dir = File(context.filesDir, DIR_NAME).apply { mkdirs() }
         val token = BtbPhotoInstanzKey.activeToken(context, baustelleId, datumIso, schicht)
         val newF = fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht)
-        if (token != null || newF.exists()) return newF
+        if (token != null || newF.exists() || File(newF.path + ".bak").exists()) return newF
         val s = BtbPhotoSelectionStore.safeTimeKey(shiftStart)
         val e = BtbPhotoSelectionStore.safeTimeKey(shiftEnd)
         return File(dir, "ovr_${baustelleId}_${datumIso}_${s}_${e}.json")
