@@ -62,6 +62,14 @@ class NutzerFragment : Fragment(R.layout.fragment_nutzer) {
         btnZurueck = view.findViewById(R.id.btnZurueck)
         btnZurueck?.setOnClickListener { findNavController().navigateUp() }
 
+        val firmaDetails = view.findViewById<View>(R.id.containerFirmaDetails)
+        val btnFirmaDetails = view.findViewById<MaterialButton>(R.id.btnFirmaDetails)
+        btnFirmaDetails.setOnClickListener {
+            val expanded = firmaDetails.visibility != View.VISIBLE
+            firmaDetails.visibility = if (expanded) View.VISIBLE else View.GONE
+            btnFirmaDetails.text = if (expanded) "Firmendaten verbergen" else "Firmendaten anzeigen"
+        }
+
         makeReadOnly(etPersName)
         listOf(etFirma, etA1, etA2, etTel, etMail).forEach(::makeReadOnly)
 

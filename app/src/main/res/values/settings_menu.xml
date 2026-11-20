@@ -4,7 +4,7 @@
     <string name="settings_account">Mein Konto</string>
     <string name="settings_account_link">Profil und Firma</string>
     <string name="settings_work">Fotos und Bautagebuch</string>
-    <string name="settings_pdf">Bautagebuch und PDF</string>
+    <string name="settings_pdf">PDF-Vorschau und Firmenlogo</string>
     <string name="settings_camera">Kamera und Fotoaufnahme</string>
     <string name="settings_caption">Beschriftung auf Fotos</string>
     <string name="settings_connection">Verbindung und Hilfe</string>
