@@ -129,7 +129,8 @@ class FotoDetailFragment : Fragment() {
             sb.append("\nGPS: ")
                 .append(foto.gpsAnzeige)
 
-            foto.notiz?.takeIf { it.isNotBlank() }?.let { sb.append("\nNotiz: ").append(it) }
+            // Long text is stored for the BTB/Word narrative, not shown
+            // beside the photograph or inside its short photo caption.
             foto.indikator?.let { sb.append("\nIndikator: ").append(it.name) }
             val optionalLabels = withContext(Dispatchers.IO) {
                 FotoOptionalFelderSpeicher.laden(requireContext(), foto.baustelleId).asList()
@@ -211,10 +212,10 @@ class FotoDetailFragment : Fragment() {
             }
         val firm = feld("Firma", foto.firma)
         val short = feld("Kurztext", foto.kurztext)
-        val notes = feld("Langtext / Notiz", foto.notiz.orEmpty(), true)
+        val notes = feld("Ausführlicher BTB-/Word-Text", foto.notiz.orEmpty(), true)
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Foto korrigieren")
-            .setMessage("Originalbild und Aufnahmezeit bleiben unverändert. Änderungen werden beim nächsten BTB-Abgleich an den Server übertragen.")
+            .setTitle("Foto und BTB-Text korrigieren")
+            .setMessage("Am Foto erscheint ausschließlich der Kurztext. Der ausführliche Text ist für BTB und Word bestimmt. Originalbild und Aufnahmezeit bleiben unverändert.")
             .setView(fields)
             .setNegativeButton("Abbrechen", null)
             .setPositiveButton("Speichern") { _, _ ->
