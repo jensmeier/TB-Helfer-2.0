@@ -42,7 +42,7 @@ object GesamtBilderlisteXlsx {
 
     private val headers = listOf(
         "Nr.", "Datum", "Uhrzeit", "Ersteller", "Verantwortlicher TB", "Art",
-        "Baustelle", "Bereich/Gleis", "KM", "Firma", "Kurzbeschreibung", "Langtext / BTB-Text",
+        "Baustelle", "Bereich/Gleis", "KM", "Firma", "Kurzbeschreibung",
         "Status", "Bilddatei", "GPS"
     )
 
@@ -53,7 +53,7 @@ object GesamtBilderlisteXlsx {
                 listOf(
                     row.nr.toString(), row.datum, row.uhrzeit, row.ersteller,
                     row.verantwortlicherTb, row.art, row.baustelle, row.bereich, row.km,
-                    row.firma, row.kurzbeschreibung, row.langtext, row.status, row.bilddatei, row.gps
+                    row.firma, row.kurzbeschreibung, row.status, row.bilddatei, row.gps
                 ).joinToString(";") { csvCell(it) }
             )
         }
@@ -74,10 +74,10 @@ object GesamtBilderlisteXlsx {
                 else -> null
             }) }
         }
-        val detailColumns = listOf("Nr.", "Ersteller", "Verantwortlicher TB", "Art", "Baustelle", "Langtext / BTB-Text", "Bilddatei")
-            .mapIndexed { i, title -> ExportTabelleXlsx.Column(title, listOf(7, 22, 22, 22, 28, 70, 45)[i],
+        val detailColumns = listOf("Nr.", "Ersteller", "Verantwortlicher TB", "Art", "Baustelle", "Bilddatei")
+            .mapIndexed { i, title -> ExportTabelleXlsx.Column(title, listOf(7, 22, 22, 22, 28, 45)[i],
                 if(i==0) ExportTabelleXlsx.Format.NUMBER else ExportTabelleXlsx.Format.TEXT) }
-        val details = rows.map { r -> listOf(r.nr.toString(), r.ersteller, r.verantwortlicherTb, r.art, r.baustelle, r.langtext, r.bilddatei).map { ExportTabelleXlsx.Cell(it) } }
+        val details = rows.map { r -> listOf(r.nr.toString(), r.ersteller, r.verantwortlicherTb, r.art, r.baustelle, r.bilddatei).map { ExportTabelleXlsx.Cell(it) } }
         return ExportTabelleXlsx.bytes(listOf(ExportTabelleXlsx.Sheet(sheetName, columns, data),
             ExportTabelleXlsx.Sheet(if(sheetName == "Details") "Fotodetails" else "Details", detailColumns, details)))
     }

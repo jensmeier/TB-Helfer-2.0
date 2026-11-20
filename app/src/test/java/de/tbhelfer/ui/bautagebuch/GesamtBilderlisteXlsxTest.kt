@@ -1,6 +1,7 @@
 package de.tbhelfer.ui.bautagebuch
 
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.ByteArrayInputStream
@@ -43,8 +44,9 @@ class GesamtBilderlisteXlsxTest {
         assertTrue(entries.getValue("xl/worksheets/sheet2.xml").contains("Verantwortlicher TB"))
         assertTrue(entries.getValue("xl/worksheets/sheet2.xml").contains("Jens Zinkel"))
         assertTrue(sheet.contains("Kurzbeschreibung"))
-        assertTrue(entries.getValue("xl/worksheets/sheet2.xml").contains("Langtext / BTB-Text"))
-        assertTrue(entries.getValue("xl/worksheets/sheet2.xml").contains("Beispiel ausführlicher BTB-Text"))
+        // Detailed BTB/Word narrative must not be exposed as a photo caption.
+        assertFalse(entries.getValue("xl/worksheets/sheet2.xml").contains("Langtext / BTB-Text"))
+        assertFalse(entries.getValue("xl/worksheets/sheet2.xml").contains("Beispiel ausführlicher BTB-Text"))
         assertTrue(rels.contains("Mängel/2026-09-10/Mangel_abc/Fotos/MANGEL_abc123.jpg"))
     }
 
