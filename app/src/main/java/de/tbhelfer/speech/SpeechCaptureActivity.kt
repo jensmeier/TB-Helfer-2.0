@@ -75,6 +75,8 @@ class SpeechCaptureActivity : AppCompatActivity() {
     private var probe: SpeechRecognizer? = null
     private var waitingTest = false
     private var lastPersisted = false
+    private var lastPersistedText = ""
+    private var lastDraftWriteMs = 0L
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         permissionPending=false
         if(granted) { permissionStart=waitingTest;window.decorView.post { startWhenVisible() } }
@@ -186,7 +188,7 @@ class SpeechCaptureActivity : AppCompatActivity() {
                 heading.text="${t.baustelleName} · ${t.entry.datumIso}\n" +
                     (info?.let { "Aktuell ausgewählt: $it" } ?: "Unterbaustelle beim Prüfen zuordnen")
                 val restored=SpeechDraftStore.list(this@SpeechCaptureActivity,t.btbId).firstOrNull { it.id==draftId }
-                if(restored!=null) { lastPersisted=true;lastText=restored.text;text.text=lastText }
+                if(restored!=null) { lastPersisted=true;lastPersistedText=restored.text;lastText=restored.text;text.text=lastText }
             } else {
                 heading.text="Kein passender aktiver BTB\nBitte zuerst einen BTB öffnen."
                 autoRequested=false
@@ -273,14 +275,14 @@ class SpeechCaptureActivity : AppCompatActivity() {
             val route=SpeechDraftPolicy.route(useLocal,SpeechDraftStore.online(this@SpeechCaptureActivity),connected())
             if(route==SpeechDraftPolicy.Route.BLOCKED){show("Deutsch offline nicht bereit. Für Online-Erkennung Internet und Onlinefreigabe erforderlich.");return@launch}
             if(!useLocal && !runCatching { SpeechRecognizer.isRecognitionAvailable(this@SpeechCaptureActivity) }.getOrDefault(false)){show("Kein Sprachdienst installiert.");return@launch}
-            test=testOnly;lastText="";lastPersisted=false;text.text="";draftId=UUID.randomUUID().toString();reviewOpened=false;reviewPending=false;stopping=false
+            test=testOnly;lastText="";lastPersisted=false;lastPersistedText="";lastDraftWriteMs=0L;text.text="";draftId=UUID.randomUUID().toString();reviewOpened=false;reviewPending=false;stopping=false
             session=SpeechSession(this@SpeechCaptureActivity,useLocal,
                 allowed={ !RecoveryWorkspace.blocked() && owner==SpeechDraftStore.owner(this@SpeechCaptureActivity) &&
                     SpeechDraftStore.enabled(this@SpeechCaptureActivity) && (useLocal || SpeechDraftStore.online(this@SpeechCaptureActivity)) },
                 onState={message,ready -> recordingReady=ready;updateControls();show(if(test) "Test · $message" else message)},
                 onText={value -> accept(Bundle().apply { putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION,arrayListOf(value)) })},
                 onFinished={value,error ->
-                    accept(Bundle().apply { putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION,arrayListOf(value)) })
+                    accept(Bundle().apply { putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION,arrayListOf(value)) }, forcePersist = true)
                     busy=false;stopping=false;recordingReady=false;updateControls()
                     if(error!=null) {
                         SpeechDiagnostics.error(this@SpeechCaptureActivity,error)
@@ -294,20 +296,25 @@ class SpeechCaptureActivity : AppCompatActivity() {
             } finally { preparing=false;updateControls() }
         }
     }
-    private fun accept(bundle:Bundle?) {
+    private fun accept(bundle:Bundle?, forcePersist: Boolean = false) {
         val value=bundle?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.trim()?.take(12000) ?: return
         if(value.isBlank())return
-        if(value==lastText && (test || lastPersisted))return
-        lastText=value;text.text=value
+        if(value != lastText) { lastText=value; text.text=value }
         if(test)return
+        if(value == lastPersistedText && lastPersisted) return
+        // Partial callbacks may arrive several times per second. Limit writes
+        // to disk while always persisting the final full recognition result.
+        val now = android.os.SystemClock.elapsedRealtime()
+        if(!forcePersist && lastPersisted && now-lastDraftWriteMs < 350L) return
         val t=target ?: return
         val own=owner ?: return
         val firms=t.entry.firmen.filter{!it.isDeleted}.map{it.firmaId to it.name}
         val section=SpeechMatching.section(value)
         val firm=SpeechMatching.firm(value,firms,SpeechAliasStore.list(this,t.baustelleId))?.id
-        lastPersisted=runCatching { SpeechDraftStore.put(this,SpeechDraft(draftId,own,t.baustelleId,t.baustelleName,t.btbId,value,section,firm,nodeId=SpeechDraftPolicy.suggestNode(value,nodeNames)));true }
+        val saved=runCatching { SpeechDraftStore.put(this,SpeechDraft(draftId,own,t.baustelleId,t.baustelleName,t.btbId,value,section,firm,nodeId=SpeechDraftPolicy.suggestNode(value,nodeNames)));true }
             .getOrDefault(false)
-        if(!lastPersisted)show("Text konnte nicht als Entwurf gesichert werden. Bitte Text prüfen und Aufnahme wiederholen.")
+        if(saved) { lastPersisted=true;lastPersistedText=value;lastDraftWriteMs=now }
+        else show("Text konnte nicht als Entwurf gesichert werden. Bitte Text prüfen und Aufnahme wiederholen.")
     }
     private fun stopCapture() { session?.cancel();session=null;busy=false;recordingReady=false;stopping=false;updateControls() }
     override fun onStop(){autoRequested=false;stopCapture();super.onStop()}
