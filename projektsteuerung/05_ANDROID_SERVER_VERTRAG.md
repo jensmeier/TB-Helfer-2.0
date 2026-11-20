@@ -38,3 +38,7 @@ Benutzer hat GitHub-Bereinigung ohne Verlust historischer Nachweise, synchrone A
 
 ### PRUEF-1120-1BIS5 – Rechte- und Datenflussabgrenzung
 Vor F-03/F-05-Korrekturen betroffene Objekt-/Team-/Bereichsrechte einschließlich Cursor, Tombstones und GLOBAL/COMPANY-Streckenkatalog verifizieren. Keine pauschale Sperre gemeinsamer Originale oder stiller Cursorverlust. Ausführliches Rechte- und Testkonzept: `uebergaben/PRUEF_1120_1_BIS_5.md`. E2E weiterhin offen.
+
+
+## FACH-1120 – Prüfvertrag Foto/Text/Wetter/Export (OFFEN)
+Sichtbare Kette: Kamera/BTB-Editor→Android Room/Offline-Outbox→Server API/DB→Portal und zweites Handy→Word/PDF/XLSX/ZIP. Nachträgliche Foto-Korrekturen müssen Firma, Kurz-/Langtext, Bildtyp, KM, Zuordnung und autorisierte Metadaten ohne Bildoriginal-/ID-Verlust versions- und konfliktgeschützt übernehmen. Wetterwerte inklusive Zeit/Ort/Quelle/0,0 mm zu Schichtbeginn und Schichtende getrennt speichern und in BTB/Word synchron halten. Detaillierte Prüfung in `projektsteuerung/uebergaben/FACH_1120_TEXT_FOTO_ZIP_WETTER.md`, E2E OFFEN.
