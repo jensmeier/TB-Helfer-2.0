@@ -107,6 +107,7 @@ BTB_PHOTO_OVERRIDE_KEYS = frozenset({
     "firmaId",
     "worksiteNodeKey",
     "kurztext",
+    "notiz",
     "km",
     "objektKennung",
     "objektBereich",
