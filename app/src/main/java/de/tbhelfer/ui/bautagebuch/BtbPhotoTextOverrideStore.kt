@@ -140,7 +140,7 @@ object BtbPhotoTextOverrideStore {
         }
 
         if (map.isEmpty()) {
-            runCatching { fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht).delete() }
+            AtomicFile(fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht)).delete()
             return
         }
 
