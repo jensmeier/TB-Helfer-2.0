@@ -224,13 +224,22 @@ class FotoRepository(
                 }
                 invalidiereFotoAbschlussWennNoetig(ctx, foto.baustelleId, btbId)
                 val previous = BtbPhotoContextOverrideStore.load(ctx, btbId)[id]
+                val priorFirma = previous?.firma ?: foto.firma
                 BtbPhotoContextOverrideStore.setOverride(
                     ctx, btbId, id,
                     (previous ?: BtbPhotoContextOverrideStore.ContextOverride(
                         firma = foto.firma, objektKennung = foto.objektKennung,
                         objektBereich = foto.objektBereich
-                    )).copy(firma = normalizedFirma, kurztext = normalizedKurztext,
-                        notiz = normalizedNotiz ?: "")
+                    )).copy(
+                        firma = normalizedFirma,
+                        // Never reuse a previous company's canonical ID after
+                        // replacing the displayed company name with another one.
+                        firmaId = previous?.firmaId?.takeIf {
+                            priorFirma.equals(normalizedFirma, ignoreCase = true)
+                        },
+                        kurztext = normalizedKurztext,
+                        notiz = normalizedNotiz ?: ""
+                    )
                 )
             }
             check(dao.updateBeschriftung(id, normalizedFirma, normalizedKurztext, normalizedNotiz) == 1) {
