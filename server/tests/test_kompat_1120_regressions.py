@@ -4,12 +4,14 @@ No NAS/network access, no migration and no production data. These use real handl
 with lightweight SQL boundary doubles and exercise refused writes / pagination.
 """
 import contextlib
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from fastapi import HTTPException
 
-from tbserver import survey_sections, track_data, survey_originals
+from tbserver import files as upload_api, survey_sections, track_data, survey_originals
 from tbserver.permissions import require_permission
 
 
@@ -89,6 +91,78 @@ class KompatSecurityTests(unittest.TestCase):
             result = survey_sections.list_survey_sections("site", limit=1, user=self.user)
         self.assertEqual([row["id"] for row in result["survey_sections"]], ["visible"])
         self.assertGreaterEqual(len(cursor.calls), 3)
+
+
+    def test_committed_upload_survives_stale_pdf_cleanup_error(self):
+        # Exercise the real complete_upload handler and real filesystem paths.
+        # SQL and dependencies are replaced, but no production data is touched.
+        class UploadCursor:
+            last = ""
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def execute(self, sql, params=None):
+                self.last = str(sql)
+
+            def fetchone(self):
+                if "SELECT now()" in self.last:
+                    return {"expired": False}
+                if "INSERT INTO tb.files" in self.last:
+                    return {"id": "committed-file", "worksite_id": "site"}
+                raise AssertionError(f"Unexpected fetchone after: {self.last[:100]}")
+
+        cursor = UploadCursor()
+        committed = []
+        @contextlib.contextmanager
+        def transaction():
+            yield Connection(cursor)
+            committed.append(True)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "uploaded.part").write_bytes(b"test-data")
+            upload = {
+                "worksite_id": "site", "company_id": "company",
+                "user_id": "user", "status": "OPEN", "temp_storage_key": "uploaded.part",
+                "received_bytes": 9, "expected_bytes": 9, "expected_sha256": None,
+                "target_kind": "ATTACHMENT", "original_name": "evidence.bin",
+                "mime_type": "application/octet-stream", "expires_at": None,
+            }
+            context = {**self.context, "company_id": "company"}
+            with contextlib.ExitStack() as stack:
+                for name, replacement in {
+                    "transaction": transaction,
+                    "begin_mutation": lambda *a, **kw: None,
+                    "_load_upload": lambda *a, **kw: upload,
+                    "_authorize_upload": lambda *a, **kw: context,
+                    "_absolute_storage_path": lambda key: root / key,
+                    "_validate_link": lambda *a, **kw: None,
+                    "canonical_photo_metadata": lambda **kw: {
+                        "captured_at": None, "gps_lat": None, "gps_lon": None,
+                        "gps_accuracy_m": None, "photo_metadata": {},
+                    },
+                    "emit_change": lambda *a, **kw: None,
+                    "audit": lambda *a, **kw: None,
+                    "finish_mutation": lambda *a, **kw: None,
+                }.items():
+                    stack.enter_context(patch.object(upload_api, name, replacement))
+                stack.enter_context(patch.object(upload_api, "remove_storage_keys", side_effect=OSError("cleanup unavailable")))
+                result = upload_api.complete_upload(
+                    upload_id="00000000-0000-0000-0000-000000000002",
+                    payload=upload_api.UploadComplete(),
+                    user=self.user,
+                    mutation=object(),
+                )
+            self.assertEqual(result["file"]["id"], "committed-file")
+            self.assertEqual(committed, [True])
+            self.assertFalse((root / "uploaded.part").exists())
+            matches = list((root / "companies").rglob("evidence.bin"))
+            self.assertEqual(len(matches), 1)
+            self.assertEqual(matches[0].read_bytes(), b"test-data")
 
     def test_read_only_cannot_register_a_worksite_file_as_survey_original(self):
         cursor = Cursor()
