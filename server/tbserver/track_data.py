@@ -126,6 +126,8 @@ def create_track_data(
             return replay_payload(receipt)
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "track.edit")
+        if not track_data_visible(context, {"dataset_kind": dataset_kind, "payload": payload.payload}):
+            raise HTTPException(403, "TRACK_DATA_AREA_SCOPE_FORBIDDEN")
         _validate_node(cur, worksite_id, payload.worksite_node_id)
         _validate_source_original(cur, context["company_id"], payload.source_original_id)
         cur.execute(
@@ -235,6 +237,12 @@ def update_track_data(
         _reject_dedicated_kind(dataset["dataset_kind"])
         context = worksite_context(cur, user, dataset["worksite_id"])
         require_permission(context, "track.edit")
+        if not track_data_visible(context, dataset):
+            raise HTTPException(403, "TRACK_DATA_AREA_SCOPE_FORBIDDEN")
+        prospective = dict(dataset)
+        prospective.update(updates)
+        if not track_data_visible(context, prospective):
+            raise HTTPException(403, "TRACK_DATA_AREA_SCOPE_FORBIDDEN")
         if "worksite_node_id" in updates:
             _validate_node(cur, dataset["worksite_id"], updates["worksite_node_id"])
         if "source_original_id" in updates:
@@ -297,6 +305,8 @@ def delete_track_data(
         dataset = _load_dataset(cur, dataset_id)
         context = worksite_context(cur, user, dataset["worksite_id"])
         require_permission(context, "track.edit")
+        if not track_data_visible(context, dataset):
+            raise HTTPException(403, "TRACK_DATA_AREA_SCOPE_FORBIDDEN")
         cur.execute(
             """
             UPDATE tb.track_data

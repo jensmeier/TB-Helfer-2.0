@@ -497,6 +497,8 @@ def create_survey_section(
             sources=sources,
             points=points,
         )
+        if not track_data_visible(context, {"dataset_kind": SECTION_KIND, "payload": section_payload}):
+            raise HTTPException(403, "SURVEY_SECTION_AREA_SCOPE_FORBIDDEN")
         first_geometry = next(source["original_id"] for source in sources if source["role"] == "GEOMETRY")
         dataset_id = payload.id or uuid4()
         cur.execute("SELECT 1 FROM tb.track_data WHERE id = %s", (dataset_id,))
@@ -588,6 +590,8 @@ def update_survey_section(
         dataset = _load_dataset(cur, dataset_id)
         context = worksite_context(cur, user, dataset["worksite_id"])
         require_permission(context, "track.edit")
+        if not track_data_visible(context, dataset):
+            raise HTTPException(403, "SURVEY_SECTION_AREA_SCOPE_FORBIDDEN")
 
         current_payload = dataset["payload"] or {}
         worksite_node_id = changes.get("worksite_node_id", dataset["worksite_node_id"])
@@ -621,6 +625,8 @@ def update_survey_section(
             sources=sources,
             points=points,
         )
+        if not track_data_visible(context, {"dataset_kind": SECTION_KIND, "payload": section_payload}):
+            raise HTTPException(403, "SURVEY_SECTION_AREA_SCOPE_FORBIDDEN")
         first_geometry = next(source["original_id"] for source in sources if source["role"] == "GEOMETRY")
 
         cur.execute(

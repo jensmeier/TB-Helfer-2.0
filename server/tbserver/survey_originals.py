@@ -13,7 +13,7 @@ from psycopg.types.json import Jsonb
 
 from .database import transaction
 from .events import audit, emit_change
-from .files import _absolute_storage_path, _hash_file, _safe_name
+from .files import _absolute_storage_path, _hash_file, _safe_name, _load_file_for_user
 from .permissions import require_permission, worksite_context
 from .portal import current_portal_user, require_csrf
 
@@ -232,6 +232,8 @@ def import_survey_original_from_file(
             # Active worksite membership is sufficient for survey contribution.
             # The raw file still has to belong to the same company/worksite context.
             context = worksite_context(cur, user, file_row["worksite_id"])
+            require_permission(context, "track.edit")
+            _load_file_for_user(cur, user, payload.file_id)
             if file_row["company_id"] != context["company_id"]:
                 raise HTTPException(403, "FILE_COMPANY_MISMATCH")
 

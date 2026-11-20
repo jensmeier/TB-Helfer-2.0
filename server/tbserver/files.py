@@ -5,6 +5,7 @@ from .btb_photo_meta import effective_catalog_photo_metadata
 import base64
 import hashlib
 import json
+import logging
 import os
 import re
 from datetime import datetime
@@ -36,6 +37,7 @@ from .portal import current_portal_user, require_csrf
 
 
 router = APIRouter(prefix="/api/v1", tags=["files"])
+logger = logging.getLogger(__name__)
 
 _MIB = 1024 * 1024
 _DEFAULT_CHUNK_SIZE = 8 * _MIB
@@ -753,13 +755,17 @@ def complete_upload(
                 result_version=None,
                 response_payload=response,
             )
-        remove_storage_keys(invalidated_pdf_keys)
-        return response
     except Exception:
         if moved and final_path is not None and final_path.exists() and temp_path is not None:
             temp_path.parent.mkdir(parents=True, exist_ok=True)
             os.replace(final_path, temp_path)
         raise
+    # The upload is committed: a failed stale-PDF cleanup must not reverse it.
+    try:
+        remove_storage_keys(invalidated_pdf_keys)
+    except OSError:
+        logger.exception("upload_pdf_cleanup_pending upload_id=%s", upload_id)
+    return response
 
 
 @router.delete("/uploads/{upload_id}", status_code=204)
