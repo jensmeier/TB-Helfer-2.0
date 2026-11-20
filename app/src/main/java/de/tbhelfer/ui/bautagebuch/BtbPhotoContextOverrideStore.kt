@@ -134,7 +134,7 @@ object BtbPhotoContextOverrideStore {
     private fun save(context: Context, btbId: String, map: Map<Long, ContextOverride>) {
         val file = fileFor(context, btbId)
         if (map.isEmpty()) {
-            runCatching { file.delete() }
+            AtomicFile(file).delete()
             return
         }
         val root = JSONObject().apply {
