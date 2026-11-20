@@ -14,3 +14,7 @@ Geschützt und erhalten: Word, drei Bilder pro Reihe, gespeicherte Fotoanzahl, s
 
 PR6 offen/Draft, PR11 offen/kein Draft; beide mergeable=false/dirty, kein Merge.
 Für die10zugeordneten CI-Läufe wurden20Jobversuche mit zusammen53,23Minuten gemessener Joblaufzeit erfasst, einschließlich Fehlern/Wiederholungen. Das sind Laufzeitdaten, keine Abrechnung. Tatsächlich berechnete Minuten, Monatsverbrauch und Freiminutenrest bleiben mangels Billingzugriff OFFEN. Zusatzbudget0USD unverändert; keine Einsparung behauptet.
+
+
+## KOMPAT-1120 – gemeinsamer Entwicklungsauftrag (20.11.2026)
+Benutzer hat GitHub-Bereinigung ohne Verlust historischer Nachweise, synchrone Android-/Server-Statusführung und gezielte Fehlerkorrekturen freigegeben. Basis: Android 1.3.46/200096 Fachcommit cda78c2f42fd7b1acd76d60612ce42d882662edf, Server 1.0.0-dev/API v1/PDF 6 Testcommit b924da3e9bbff603a78ca55753cefb439f1ac607. Basispaarung ist keine reale Pixel/Poco/NAS-Abnahme. Neue fachliche Commits gesondert ausweisen. E01–E12 bleiben offen. Keine NAS-/Produktivdatenänderung. Neue Fehler F-01 bis F-07 in 09_KOMPATIBILITAETSBASIS.md, Altbestätigungen und Archiv behalten.

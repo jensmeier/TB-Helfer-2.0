@@ -24,3 +24,7 @@ Vorhandene Fachverträge unter `vertraege/` bleiben gültig; kein paralleles Dat
 
 Ein Fehler beim Trassenabgleich darf nicht unbestätigt verschwinden: Journal/Fehlerprotokoll/persistenter Arbeitsauftrag bleiben. 15min-WorkManager ist ein verschiebbarer Fallback, keine Sofortzustellgarantie. Erfolgreicher Originalupload allein ist noch keine erfolgreiche fachliche Dekodierung.
 Geschützt und erhalten: Word, drei Bilder pro Reihe, gespeicherte Fotoanzahl, stabile IDs und Originale sowie historische BESTÄTIGT/PASST/FUNKTIONIERT/ERLEDIGT-Markierungen. Neue Tests sind keine erneute pauschale Praxisbestätigung. Ungeprüfte ältere Restaufträge bleiben im Archiv offen zur Einordnung.
+
+
+## KOMPAT-1120 – gemeinsamer Entwicklungsauftrag (20.11.2026)
+Benutzer hat GitHub-Bereinigung ohne Verlust historischer Nachweise, synchrone Android-/Server-Statusführung und gezielte Fehlerkorrekturen freigegeben. Basis: Android 1.3.46/200096 Fachcommit cda78c2f42fd7b1acd76d60612ce42d882662edf, Server 1.0.0-dev/API v1/PDF 6 Testcommit b924da3e9bbff603a78ca55753cefb439f1ac607. Basispaarung ist keine reale Pixel/Poco/NAS-Abnahme. Neue fachliche Commits gesondert ausweisen. E01–E12 bleiben offen. Keine NAS-/Produktivdatenänderung. Neue Fehler F-01 bis F-07 in 09_KOMPATIBILITAETSBASIS.md, Altbestätigungen und Archiv behalten.
