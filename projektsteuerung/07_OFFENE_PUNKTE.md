@@ -36,3 +36,11 @@ Bereits vorhandene Export-/Metadaten-/Wiederöffnungs-/Live-/Rechtefunktionen ni
 
 ## KOMPAT-1120 – gemeinsamer Entwicklungsauftrag (20.11.2026)
 Benutzer hat GitHub-Bereinigung ohne Verlust historischer Nachweise, synchrone Android-/Server-Statusführung und gezielte Fehlerkorrekturen freigegeben. Basis: Android 1.3.46/200096 Fachcommit cda78c2f42fd7b1acd76d60612ce42d882662edf, Server 1.0.0-dev/API v1/PDF 6 Testcommit b924da3e9bbff603a78ca55753cefb439f1ac607. Basispaarung ist keine reale Pixel/Poco/NAS-Abnahme. Neue fachliche Commits gesondert ausweisen. E01–E12 bleiben offen. Keine NAS-/Produktivdatenänderung. Neue Fehler F-01 bis F-07 in 09_KOMPATIBILITAETSBASIS.md, Altbestätigungen und Archiv behalten.
+
+
+### PRUEF-1120-1BIS5 – neue Arbeitsblöcke
+- F-03 SERVER: Change-Feed fachobjekt-/team-/bereichssicher machen, Cursor/Wait/SSE/Löschungen und Rückfall testen; weiterhin OFFEN.
+- F-05 SERVER: Originale GLOBAL vs. COMPANY vs. baustellengebunden sauber abgrenzen, bisher geteilte Fachkatalogreferenzen erhalten; weiterhin OFFEN.
+- F-01/F-02/F-04/F-06 SERVER und F-07 ANDROID: Korrekturcode bereits vorhanden, gezielte neue Regressionen prüfen, nicht allein CI-Summary vertrauen.
+- Android 20/21→22 und vorhandene App-Signatur: BLOCKIERT bis realer Testbestand vorliegt. Keine Deinstallation als Abkürzung.
+- Synology-Deployment/Pixel/Poco-E01–E12: NICHT AUSGEFÜHRT. Vorbereitungs- und Nachweisliste in `uebergaben/PRUEF_1120_1_BIS_5.md`.

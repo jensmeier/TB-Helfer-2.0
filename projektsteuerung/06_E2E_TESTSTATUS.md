@@ -35,3 +35,7 @@ Pixel, Poco und Synology: aktueller Installations-/Deploymentstand und E01–E12
 
 Für die10zugeordneten CI-Läufe wurden20Jobversuche mit zusammen53,23Minuten gemessener Joblaufzeit erfasst, einschließlich Fehlern/Wiederholungen. Das sind Laufzeitdaten, keine Abrechnung. Tatsächlich berechnete Minuten, Monatsverbrauch und Freiminutenrest bleiben mangels Billingzugriff OFFEN. Zusatzbudget0USD unverändert; keine Einsparung behauptet.
 Geschützt und erhalten: Word, drei Bilder pro Reihe, gespeicherte Fotoanzahl, stabile IDs und Originale sowie historische BESTÄTIGT/PASST/FUNKTIONIERT/ERLEDIGT-Markierungen. Neue Tests sind keine erneute pauschale Praxisbestätigung. Ungeprüfte ältere Restaufträge bleiben im Archiv offen zur Einordnung.
+
+
+### PRUEF-1120-1BIS5
+E01–E12 bleiben OFFEN; konkrete reproduzierbare Pixel/Poco/NAS-Schritte, Soll-Ist-Dokumentation und Geräte-/Versionsnachweise in `uebergaben/PRUEF_1120_1_BIS_5.md`. Ohne physische Geräte- und NAS-Berechtigung keine Praxisabnahme.
