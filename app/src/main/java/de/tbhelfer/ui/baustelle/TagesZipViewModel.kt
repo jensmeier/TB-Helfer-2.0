@@ -11,6 +11,9 @@ import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbExportPaket
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.zip.ZipFile
 
 class TagesZipViewModel(private val savedState: SavedStateHandle) : ViewModel() {
     val speicherStatus = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
@@ -60,7 +63,27 @@ class TagesZipViewModel(private val savedState: SavedStateHandle) : ViewModel() 
         val app = context.applicationContext
         return auftrag.starten {
             try {
-                BtbExportPaket.erstellenLokalenBtbExport(app, item).zipFile
+                val file = BtbExportPaket.erstellenLokalenBtbExport(app, item).zipFile
+                // Reject incomplete/corrupt archives before Android shares a
+                // supposedly successful daily export. Never mutate originals.
+                withContext(Dispatchers.IO) {
+                    ZipFile(file).use { archive ->
+                        check(archive.size() > 0) { "ZIP enthält keine Dateien" }
+                        val entries = archive.entries()
+                        val seen = hashSetOf<String>()
+                        val buffer = ByteArray(64 * 1024)
+                        while (entries.hasMoreElements()) {
+                            val entry = entries.nextElement()
+                            check(seen.add(entry.name)) { "ZIP enthält doppelte Einträge" }
+                            if (!entry.isDirectory) {
+                                archive.getInputStream(entry).use { input ->
+                                    while (input.read(buffer) != -1) { /* CRC is checked at stream end */ }
+                                }
+                            }
+                        }
+                    }
+                }
+                file
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {

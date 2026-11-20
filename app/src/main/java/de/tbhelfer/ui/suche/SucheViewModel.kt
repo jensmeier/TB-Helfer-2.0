@@ -29,6 +29,9 @@ class SucheViewModel(
 ) : ViewModel() {
 
     private val filterFlow = MutableStateFlow(SucheFilter())
+    // A StateFlow does not emit when assigned an equal value. Explicit refresh
+    // must have its own changing signal so new BTB PDFs are visible immediately.
+    private val btbRefresh = MutableStateFlow(0L)
 
     private val KEY_CART_FOTO_IDS = stringSetPreferencesKey("cart_foto_ids")
     private val KEY_CART_BTB_PATHS = stringSetPreferencesKey("cart_btb_paths")
@@ -126,7 +129,7 @@ val streckenpunkte: StateFlow<List<StreckenpunktEntity>> =
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val btbsGefiltert: StateFlow<List<BtbDatei>> =
-        combine(filterFlow, baustellen) { filter, baustellen ->
+        combine(filterFlow, baustellen, btbRefresh) { filter, baustellen, _ ->
             filterBtbs(filter, baustellen)
         }
             .flowOn(Dispatchers.IO)
@@ -240,9 +243,11 @@ val streckenpunkte: StateFlow<List<StreckenpunktEntity>> =
             val idx = pathParts.indexOfLast { it == "TB-Helfer" }
             val baustelleOrdner = if (idx >= 0 && idx + 1 < pathParts.size) pathParts[idx + 1] else ""
             val baustelleEntity = byFolderName.entries.firstOrNull { (name, _) ->
-                name.equals(baustelleOrdner, ignoreCase = true) ||
+                name.isNotBlank() && baustelleOrdner.isNotBlank() && (
+                    name.equals(baustelleOrdner, ignoreCase = true) ||
                     baustelleOrdner.contains(name, ignoreCase = true) ||
                     name.contains(baustelleOrdner, ignoreCase = true)
+                )
             }?.value
 
             val bId = baustelleEntity?.id
@@ -281,8 +286,7 @@ val streckenpunkte: StateFlow<List<StreckenpunktEntity>> =
     }
 
     fun refreshBtbs() {
-        // Trigger via setFilter no-op (führt combine neu aus)
-        viewModelScope.launch { filterFlow.value = filterFlow.value }
+        btbRefresh.value += 1L
     }
 
     class Fabrik(
