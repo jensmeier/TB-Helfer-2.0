@@ -34,7 +34,7 @@ jobs:
       - name: Checkout pinned server contract partner
         uses: actions/checkout@v4
         with:
-          ref: 451c4310060b56a99ea631d144a6d2d40a75fb2d
+          ref: 785c20e2b3d92cc6656c88b5997abaf6b8b028e2
           path: .ci/server-source
       - name: Use actual server contract checks
         run: |
