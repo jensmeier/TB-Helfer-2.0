@@ -28,7 +28,8 @@ def main():
         envfile = root / 'compose.env'
         envfile.write_text('TB_V1_DB_PASSWORD=disposable-ci-only\nTB_V1_RESTORE_TEST_DB_PASSWORD=disposable-ci-only\nTB_V1_RESTORE_TARGET_DB_PASSWORD=disposable-ci-only\nTB_V1_CLOUDFLARE_TUNNEL_TOKEN=unused-ci-only\n')
         env = {k: v for k, v in os.environ.items() if not k.startswith('TB_V1_')}
-        env.update(TB_V1_DB_NAME='tb_gate_compose', TB_V1_ENVIRONMENT='test', TB_V1_API_PORT='18081')
+        env.update(TB_V1_DB_NAME='tb_gate_compose', TB_V1_ENVIRONMENT='test', TB_V1_API_PORT='18081',
+               TB_V1_SYSTEM_EXPORT_TOKEN='ci-only-system-export-secret-32characters')
         env['TB_V1_ACTIVE_COMPOSE_FILE'] = str(composefile)
         for key, name in {
             'DB_DATA':'database', 'RESTORE_TEST_DB_DATA':'test-database', 'RESTORE_TARGET_DB_DATA':'legacy-target-database',

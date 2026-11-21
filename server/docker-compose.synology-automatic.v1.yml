@@ -182,6 +182,7 @@ services:
       TB_RECOVERY_STORAGE_ROOT: /tb/recovery-storage
       TB_RUNTIME_ACK_ROOT: /tb/runtime-ack
       TB_SYSTEM_EXPORT_URL: http://system-export:8091/export
+      TB_SYSTEM_EXPORT_TOKEN: ${TB_V1_SYSTEM_EXPORT_TOKEN:?TB_V1_SYSTEM_EXPORT_TOKEN fehlt}
     volumes:
     - ${TB_V1_STORAGE_DIR:-./storage-v1}:/tb/storage-v1
     - ${TB_V1_BACKUP_DIR:-./backups-v1}:/tb/backups-v1
@@ -358,6 +359,7 @@ services:
     environment:
       TB_BACKUP_ROOT: /tb/backups-v1
       TB_SYSTEM_IMAGE_REFS: '["tb-helfer-server-v1:local","postgis/postgis:17-3.5","nginx:stable-alpine","cloudflare/cloudflared:latest"]'
+      TB_SYSTEM_EXPORT_TOKEN: ${TB_V1_SYSTEM_EXPORT_TOKEN:?TB_V1_SYSTEM_EXPORT_TOKEN fehlt}
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock:ro
     - ${TB_V1_BACKUP_DIR:-./backups-v1}:/tb/backups-v1

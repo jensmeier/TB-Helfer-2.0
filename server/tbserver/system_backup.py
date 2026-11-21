@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import shutil
 import socket
 import tarfile
@@ -156,10 +157,22 @@ def export_system(run_id, root, source, references, client=None):
     return final
 
 
+def system_export_authorized(expected: str | None, provided: str | None) -> bool:
+    """Deny empty/weak secrets and compare full values without early mismatch."""
+    return bool(expected and len(expected) >= 32 and provided and
+                secrets.compare_digest(expected, provided))
+
+
 def main():
     references = json.loads(os.environ['TB_SYSTEM_IMAGE_REFS'])
+    token = os.environ.get('TB_SYSTEM_EXPORT_TOKEN')
+    if not system_export_authorized(token, token):
+        raise SystemBackupError('SYSTEM_EXPORT_TOKEN_NOT_CONFIGURED')
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):
+            if not system_export_authorized(token, self.headers.get('X-TB-System-Export-Token')):
+                self.send_error(403, 'SYSTEM_EXPORT_ACCESS_DENIED')
+                return
             try:
                 if self.path != '/export' or not 0 < int(self.headers.get('Content-Length', 0)) <= 100:
                     raise ValueError()

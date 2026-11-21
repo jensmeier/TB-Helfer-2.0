@@ -320,9 +320,13 @@ def _system_backup(run_id: UUID, progress=None) -> tuple[str, Path]:
     url = os.getenv('TB_SYSTEM_EXPORT_URL')
     if not url:
         raise BackupError('SYSTEM_EXPORT_NOT_CONFIGURED')
+    token = os.getenv('TB_SYSTEM_EXPORT_TOKEN') or ''
+    if len(token) < 32:
+        raise BackupError('SYSTEM_EXPORT_TOKEN_NOT_CONFIGURED')
     _progress(progress, 20, 'Programmstand und Serverimages werden gesichert')
     request = urllib.request.Request(url, data=json.dumps({'run_id': str(run_id)}).encode(),
-                                     headers={'Content-Type': 'application/json'}, method='POST')
+                                     headers={'Content-Type': 'application/json',
+                                              'X-TB-System-Export-Token': token}, method='POST')
     with urllib.request.urlopen(request, timeout=6 * 3600) as response:
         metadata = json.loads(response.read(16384))
     key = f'system/{run_id}.tar'

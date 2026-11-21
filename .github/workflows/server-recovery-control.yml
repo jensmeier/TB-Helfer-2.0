@@ -83,7 +83,7 @@ jobs:
           python server/checks/147_verify_recovery_service.py
           python server/checks/148_verify_system_backup.py
           python server/checks/149_verify_automatic_deployment.py
-          TB_V1_ENVIRONMENT=test TB_V1_DB_PASSWORD=disposable TB_V1_RESTORE_TEST_DB_PASSWORD=disposable TB_V1_CLOUDFLARE_TUNNEL_TOKEN=disposable docker compose -f server/docker-compose.synology-automatic.v1.yml config --quiet
+          TB_V1_ENVIRONMENT=test TB_V1_SYSTEM_EXPORT_TOKEN=ci-only-system-export-secret-32characters TB_V1_DB_PASSWORD=disposable TB_V1_RESTORE_TEST_DB_PASSWORD=disposable TB_V1_CLOUDFLARE_TUNNEL_TOKEN=disposable docker compose -f server/docker-compose.synology-automatic.v1.yml config --quiet
       - name: Domain planning and reference tests
         run: python server/checks/143_verify_backup_domains.py
       - name: PostgreSQL 17 read-only domain gate
