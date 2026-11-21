@@ -48,3 +48,19 @@ Android 1.3.47 / 200097, Codecommit `fe8e4f3f873837b06344386ccdc1a4c1cfc64e8f`. 
 Umgesetzt im Android-Fachcode: Foto-Firma, Kurz- und Langtext bearbeiten; BTB-Overrides atomar speichern; alte firmaId beim Firmennamenwechsel verwerfen; Kurztext nur Fotoliste, Langtext für BTB/Word; Such-Refresh reparieren; ZIP-Einträge/CRC vor Weitergabe prüfen; Fototext-Rechtschreibvorschläge und unveränderte Fachfirmennamen; Spracheingabe-Zwischenspeicherung drosseln; Wetterzeitpunkte Schichtanfang/Mitte/Ende; Firmenfelder im Profil einklappen. Gezielt implementierte Tests: `TagesZipPruefungTest`, `BtbWeatherPolicyTest`, bisherige Foto-/XLSX-/ZIP-/Sprachtests erhalten.
 
 **OFFEN und nicht als erledigt markieren:** erneuter tatsächlicher Wetterdienstabruf bei realem Schichtende mit Quellenvergleich (Startwert darf nicht überschrieben werden); vollständige Fotoänderung auf anderem Handy und im Portal einschließlich nicht BTB-gebundener Fotos, Typ/KM/Unterbaustelle und Schreibrechte; gesamte Suche mit Serverfilter; reale Excel/ZIP/Word/PDF-Referenzfälle; Pixel/Poco/Room20-21/Signatur und NAS E01–E12; separate SERVER-Sicherheitsbefunde. Testkette noch auf vollständigen CI-Gesamtnachweis und Geräte-Praxisprüfung warten. Keine Datenbankmigration hinzugefügt; Originalfotos, stabiler BTB/Word-Bestand und drei Fotos pro Reihe geschützt.
+
+## SERVER-SEC-1121 – Auftrag zur Korrektur belegter Serverfehler (21.11.2026)
+Benutzer hat ausdrücklich verlangt: alle dokumentierten Serverfehler erneut abgleichen, bereinigt auflisten und tatsächliche Serverfehler mit Regressionen korrigieren. Ausgangs-HEAD Server `0eb98fa50532d7101d5dcdc7a3481a33899984a1`, Android `a5d354ba386f7f76084b1f0d9094e0bca3a2110a` (1.3.47/200097). Letzte Server-CI 44670178818 komplett erfolgreich; CI ist weder NAS-Deployment noch E2E.
+
+Neu/noch offen aus Quellcode:
+- S-05 KRITISCH: `admin_purge.py` Baustellen-Purge entfernt Dateipfade, die `survey_originals.py` auf weiter bestehende firmenweite Vermessungsoriginale umgebucht hat; Original/Referenz schützen.
+- S-02 HOCH: `releases.py` kann nach bestätigtem Datenbank-Commit bei Datei-Cleanup-Fehler die installierte Release-Datei zurückrollen; vor/nach Commit trennen.
+- S-07 MITTEL: `admin_purge.py` Firmen-Purge entfernt leere globale Achsen ohne Firmenbezug; Datenkatalog global erhalten.
+- S-01 HOCH: produktiv genutzte Compose-Vorlage enthält stillen staging-Fallback und beeinflusst irreversible Admin-Schutzschranken; vorhandene Runtime-`.env` unbekannt, vor Deployment gesondert verifizieren.
+- S-06 HOCH HÄRTUNG: `system-export` hat lesend gemounteten Host-Docker-Socket und HTTP-Export ohne eigenständige Authentifizierung; nur in gesichertem Test-/Deploymentfenster mit funktionierendem Vollbackup ersetzbar.
+- F-03 MITTEL: Change-Feed liefert bei Mitgliedschaft zum Teil fremde Fachobjekt-Metadaten; Filter für Team/KM/Tombstones/Wait/SSE gegen Android-Cursor abstimmen.
+- F-05 HOCH abhängig von Freigabevertrag: Firmen-Rohoriginale auch ohne individuelle Baustellenmitgliedschaft; GLOBAL/COMPANY/baustellengebundene Referenzen unterscheiden, bestätigten gemeinsamen Katalog nicht sperren.
+- BTB-16H: deaktivierter/abgelaufener Lead → automatischer Abschluss möglicherweise nicht ausgeführt, fachliche Rollenübergabe klären.
+- Weitere Punkte Wetter Beginn/Ende, Foto-/Text-Portalbearbeitung, Suche, ZIP/Word/XLSX und echte Android↔Server E2E: aus FACH-1120 als Fach-/Prüfaufträge offen; keine pauschale Fehlerbestätigung.
+
+Bereits CODE GEÄNDERT/CI BESTANDEN (nicht erneut öffnen): F-01 Upload-PDF-Cleanup, F-02 Track/KM-Schreibscope, F-04 Survey-Originalimportrechte, F-06 Survey-Paginierung, AUDIT-1108-01/-02. E01–E12 real OFFEN. Neue Korrekturen nur in Server-Branch, kein NAS-SSH/Deployment/produktive Migration/Purge, keine API-Abschwächung und keine neue kostenpflichtige CI-Runneraktion. Teststatus ausdrücklich QUELLCODE GEÄNDERT → TEST/CI → NAS E2E gesondert.
