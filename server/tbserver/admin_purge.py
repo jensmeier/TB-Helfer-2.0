@@ -520,6 +520,31 @@ def purge_company(
         if cur.fetchone():
             raise HTTPException(409, "COMPANY_PURGE_CROSS_COMPANY_SURVEY_REFERENCE")
 
+        # A globally published segment is not private company data. Even a
+        # staging company purge must not silently erase other users' shared
+        # reference geometry when an original or catalog asset came from it.
+        cur.execute(
+            """
+            SELECT 1
+            FROM tb.survey_catalog_segments s
+            JOIN tb.survey_catalog_axes ax ON ax.id = s.axis_id
+            LEFT JOIN tb.survey_catalog_assets asset ON asset.id = s.asset_id
+            WHERE ax.scope = 'GLOBAL'
+              AND (
+                  s.source_original_id IN (
+                      SELECT id FROM tb.survey_originals WHERE company_id = %s
+                  )
+                  OR asset.original_id IN (
+                      SELECT id FROM tb.survey_originals WHERE company_id = %s
+                  )
+              )
+            LIMIT 1
+            """,
+            (company_id, company_id),
+        )
+        if cur.fetchone():
+            raise HTTPException(409, "COMPANY_PURGE_GLOBAL_CATALOG_REFERENCES")
+
         storage_keys.extend(
             _storage_keys(cur, "SELECT storage_key FROM tb.files WHERE company_id = %s", (company_id,))
         )

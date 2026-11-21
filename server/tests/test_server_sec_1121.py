@@ -98,6 +98,20 @@ class PurgeProtectionTests(TestCase):
         self.assertEqual(self.deleted, ["worksite/photo.jpg"])
         self.assertNotIn("reference/survey-originals/shared.tra", self.deleted)
 
+    def test_company_purge_blocks_deletion_of_published_global_geometry(self):
+        class GlobalCursor(Cursor):
+            def execute(self, sql, params=()):
+                super().execute(sql, params)
+                if "FROM tb.survey_catalog_segments s" in self.sql and "ax.scope = 'GLOBAL'" in self.sql:
+                    self._row = {"one": 1}
+        self.cursor = GlobalCursor()
+        from fastapi import HTTPException
+        with self.assertRaises(HTTPException) as captured:
+            admin_purge.purge_company(COMPANY, self.confirm(COMPANY), {"user_id": ACTOR})
+        self.assertEqual(captured.exception.status_code, 409)
+        self.assertEqual(captured.exception.detail, "COMPANY_PURGE_GLOBAL_CATALOG_REFERENCES")
+        self.assertFalse(any("DELETE FROM tb.worksites" in sql for sql, _ in self.cursor.executed))
+
     def test_company_purge_does_not_delete_empty_global_axes(self):
         response = admin_purge.purge_company(
             COMPANY, self.confirm(COMPANY), {"user_id": ACTOR}
