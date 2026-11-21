@@ -55,7 +55,7 @@ services:
       STORAGE_ROOT: /tb/storage-v1
       TB_BACKUP_ROOT: /tb/backups-v1
       TB_MIGRATIONS_ROOT: /app/v1_migrations
-      TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:-staging}
+      TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:?TB_V1_ENVIRONMENT muss in .env explizit production oder staging sein}
       TZ: ${TZ:-Europe/Berlin}
       TB_RECOVERY_CONTROL_ROOT: /tb/recovery-control
       TB_RECOVERY_STORAGE_ROOT: /tb/recovery-storage
@@ -91,7 +91,7 @@ services:
       STORAGE_ROOT: /tb/storage-v1
       TB_BACKUP_ROOT: /tb/backups-v1
       TB_MIGRATIONS_ROOT: /app/v1_migrations
-      TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:-staging}
+      TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:?TB_V1_ENVIRONMENT muss in .env explizit production oder staging sein}
       TB_PUBLIC_BASE_URL: ${TB_V1_PUBLIC_BASE_URL:-}
       TB_PORTAL_PUBLIC_BASE_URL: ${TB_V1_PORTAL_PUBLIC_BASE_URL:-}
       TB_PORTAL_SESSION_HOURS: ${TB_V1_PORTAL_SESSION_HOURS:-12}
@@ -163,7 +163,7 @@ services:
       STORAGE_ROOT: /tb/storage-v1
       TB_BACKUP_ROOT: /tb/backups-v1
       TB_MIGRATIONS_ROOT: /app/v1_migrations
-      TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:-staging}
+      TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:?TB_V1_ENVIRONMENT muss in .env explizit production oder staging sein}
       LOG_LEVEL: ${TB_V1_LOG_LEVEL:-INFO}
       TB_BACKUP_RETENTION_DAYS: ${TB_V1_BACKUP_RETENTION_DAYS:-90}
       TB_BACKUP_RETENTION_MIN_PER_KIND: ${TB_V1_BACKUP_RETENTION_MIN_PER_KIND:-3}
@@ -221,7 +221,7 @@ services:
       DB_NAME: ${TB_V1_DB_NAME:-tb_helfer_v1}
       DB_USER: ${TB_V1_DB_USER:-tb_helfer}
       DB_PASSWORD: ${TB_V1_DB_PASSWORD:?TB_V1_DB_PASSWORD fehlt}
-      TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:-staging}
+      TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:?TB_V1_ENVIRONMENT muss in .env explizit production oder staging sein}
       TB_DIAGNOSTICS_ROOT: /tb/diagnostics-v1
       TB_MONITOR_API_URL: http://api:8080/health/ready
       TB_MONITOR_PUBLIC_URL: ${TB_V1_PUBLIC_BASE_URL:-}
@@ -282,7 +282,7 @@ services:
       STORAGE_ROOT: /tb/storage-v1
       TB_BACKUP_ROOT: /tb/backups-v1
       TB_MIGRATIONS_ROOT: /app/v1_migrations
-      TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:-staging}
+      TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:?TB_V1_ENVIRONMENT muss in .env explizit production oder staging sein}
       LOG_LEVEL: ${TB_V1_LOG_LEVEL:-INFO}
       TB_BACKUP_RETENTION_DAYS: ${TB_V1_BACKUP_RETENTION_DAYS:-90}
       TB_BACKUP_RETENTION_MIN_PER_KIND: ${TB_V1_BACKUP_RETENTION_MIN_PER_KIND:-3}
