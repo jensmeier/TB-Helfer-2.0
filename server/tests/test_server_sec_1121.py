@@ -173,7 +173,9 @@ class ReleaseCommitTests(TestCase):
                         RELEASE, RequestStub(), {"user_id": ACTOR}
                     ))
                     self.assertEqual(result["release"]["binary"]["byte_size"], len(data))
-            self.assertEqual(committed, [] if fail_audit else [True])
+            # The read-only DRAFT preflight is a separate successful transaction.
+            # An injected audit exception aborts only the subsequent write.
+            self.assertEqual(len(committed), 1 if fail_audit else 2)
             self.assertEqual(final.read_bytes(), b"old-release" if fail_audit else data)
 
     def test_cleanup_after_commit_keeps_confirmed_apk(self):
