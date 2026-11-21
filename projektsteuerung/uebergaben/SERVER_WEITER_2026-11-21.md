@@ -13,3 +13,9 @@
 
 ## Zuständigkeiten und Testfreigabe
 SERVER: Rechte und Backup-Architektur entwickeln; Android: Gegenserverprüfung und kompatible lokale Versionsmigration. Gemeinsame E2E: User-Testdaten auf Pixel/Poco und einem autorisiert bereitgestellten isolierten NAS-Testbestand. Keine produktive Ausführung durch diesen Chat. Alte CI-Nachweise und geschützte Funktionen bleiben erhalten. F-03, F-05 und S-06 dürfen erst nach echten Rechte-/Backup-Tests und nachvollziehbarer fachlicher Freigabe als ERLEDIGT markiert werden.
+
+## Verifizierter Abschluss der CI-Teilprüfung 21.11.2026
+- `44911154233` SERVER https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/44911154233: **CI BESTANDEN**, Jobs `foundation` und `Snapshot, rights and 255-client HTTP gate` jeweils vollständig erfolgreich. Fachcode `2fb91c592941c5efba6f02608343b6e3a7f09122`.
+- `44911154263` RECOVERY https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/44911154263: **CI BESTANDEN**, Jobs `recovery-core` und `restore-ui` erfolgreich; isolierte Recovery- und Compose-Gates wurden nicht entfernt.
+- `44911363072` ANDROID https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/44911363072: **CI BESTANDEN**, Jobs `build` und `Server and Android source contracts` erfolgreich. Android 1.3.47/200097, Gegenserver-Codepin `2fb91c592941c5efba6f02608343b6e3a7f09122`.
+- Diese Bestätigung **schließt weder** F-03 vollständig **noch** F-05/S-06 (Docker-Socket), 16h-Lead-Randfall oder echte NAS/Pixel/Poco-E2E. Es wurde nichts auf der NAS installiert. Vor einer späteren NAS-Übernahme sind die neuen verbindlichen Umgebungsvariablen `TB_V1_ENVIRONMENT` und `TB_V1_SYSTEM_EXPORT_TOKEN` zu beachten; Secrets nicht in GitHub/Chats speichern.
