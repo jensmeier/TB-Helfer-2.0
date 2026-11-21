@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,7 @@ from .release_compatibility import compatibility_status, normalize_platform
 
 
 router = APIRouter(prefix="/api/v1", tags=["releases"])
+logger = logging.getLogger(__name__)
 
 _RELEASE_MAX_BYTES = 512 * 1024 * 1024
 _RELEASE_STREAM_CHUNK = 1024 * 1024
@@ -378,12 +380,18 @@ async def admin_upload_release_binary(
                         "sha256": actual_sha,
                     },
                 )
-            _finish_binary_files(temp_path, backup_path)
         except Exception:
+            # This handler only covers errors BEFORE the database commit.
             if installed:
                 _rollback_binary(final_path, backup_path, had_previous)
             _finish_binary_files(temp_path, backup_path)
             raise
+        # Database transaction committed: stale-file cleanup is best effort.
+        # Its failure must never roll back the confirmed release binary.
+        try:
+            _finish_binary_files(temp_path, backup_path)
+        except OSError:
+            logger.exception("release_binary_cleanup_pending release_id=%s", release_id)
     except Exception:
         _finish_binary_files(temp_path)
         raise

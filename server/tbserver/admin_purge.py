@@ -337,7 +337,12 @@ def purge_worksite(
         storage_keys.extend(
             _storage_keys(
                 cur,
-                "SELECT storage_key FROM tb.files WHERE worksite_id = %s",
+                """SELECT f.storage_key FROM tb.files f
+                   WHERE f.worksite_id = %s
+                     AND NOT EXISTS (
+                         SELECT 1 FROM tb.survey_originals o
+                         WHERE o.storage_key = f.storage_key
+                     )""",
                 (worksite_id,),
             )
         )
@@ -662,16 +667,10 @@ def purge_company(
         )
         cur.execute(
             """
+            -- A company's purge must never remove an unrelated empty
+            -- GLOBAL or other company's axis, even if it has no segments.
             DELETE FROM tb.survey_catalog_axes a
-            WHERE (a.scope = 'COMPANY' AND a.company_id = %s)
-               OR (
-                    NOT EXISTS (
-                        SELECT 1 FROM tb.survey_catalog_segments s WHERE s.axis_id = a.id
-                    )
-                    AND NOT EXISTS (
-                        SELECT 1 FROM tb.survey_catalog_conflicts c WHERE c.axis_id = a.id
-                    )
-               )
+            WHERE a.scope = 'COMPANY' AND a.company_id = %s
             """,
             (company_id,),
         )
