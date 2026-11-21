@@ -43,7 +43,7 @@ permissions:
 
 jobs:
   recovery-core:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
       postgres:
@@ -122,7 +122,7 @@ jobs:
         run: python server/tools/compose_recovery_gate.py --reviewed
 
   restore-ui:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
