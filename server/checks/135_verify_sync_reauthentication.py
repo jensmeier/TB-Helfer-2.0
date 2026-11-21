@@ -1,4 +1,8 @@
-"""Production sync generators with auth/DB doubles; no live HTTP server."""
+"""Production sync generators with auth/DB doubles; no live HTTP server.
+
+Explicit worksite.view authorization is independently covered by
+server/tests/test_sync_1121_scope.py; this fixture isolates reauthentication.
+"""
 import ast, asyncio, json, unittest
 from pathlib import Path
 from typing import Any
@@ -30,7 +34,8 @@ class SyncChecks(unittest.IsolatedAsyncioTestCase):
                  Depends=lambda x:None,current_portal_user=None,HTTPException=Denied,
                  _MAX_WAIT_SECONDS=30,_CHANGE_HUB=Hub(),_run_sync_query=query,
                  _refresh_sync_user=refresh,_visible_changes=visible,_entity_types=lambda x:[],
-                 transaction=Tx,worksite_context=lambda *args:None,json=json,
+                 transaction=Tx,worksite_context=lambda *args:None,
+                 require_permission=lambda *args:None,json=json,
                  StreamingResponse=lambda stream,**kw:stream)
         tree=ast.parse((Path(__file__).parents[1]/'tbserver/sync.py').read_text())
         tree.body=[n for n in tree.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name in {'wait_changes','live_events'}]
@@ -51,7 +56,8 @@ class SyncChecks(unittest.IsolatedAsyncioTestCase):
             self.assertIs(user,fresh); self.assertEqual(target,worksite)
             calls.append('context'); raise Denied(403)
         env=dict(Request=Any,UUID=UUID,Any=Any,current_portal_user=auth,
-                 transaction=Tx,worksite_context=context)
+                 transaction=Tx,worksite_context=context,
+                 require_permission=lambda *args:None)
         tree=ast.parse((Path(__file__).parents[1]/'tbserver/sync.py').read_text())
         tree.body=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='_refresh_sync_user']
         exec(compile(tree,'sync','exec'),env)
