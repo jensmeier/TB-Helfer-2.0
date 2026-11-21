@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from .database import connect, transaction
-from .permissions import worksite_context
+from .permissions import require_permission, worksite_context
 from .portal import current_portal_user
 
 
@@ -144,7 +144,7 @@ def _visible_changes(
             base_params.append(through)
 
         if worksite_id is not None:
-            worksite_context(cur, user, worksite_id)
+            require_permission(worksite_context(cur, user, worksite_id), "worksite.view")
             params: list[Any] = [worksite_id, after, *base_params]
             type_clause = _type_clause("entity_type", entity_types, params)
             params.append(limit)
@@ -246,7 +246,7 @@ def _refresh_sync_user(request: Request, worksite_id: UUID | None) -> dict[str, 
     user = current_portal_user(request)
     if worksite_id is not None:
         with transaction() as conn, conn.cursor() as cur:
-            worksite_context(cur, user, worksite_id)
+            require_permission(worksite_context(cur, user, worksite_id), "worksite.view")
     return user
 
 
@@ -314,7 +314,7 @@ def live_events(
 ):
     if worksite_id is not None:
         with transaction() as conn, conn.cursor() as cur:
-            worksite_context(cur, user, worksite_id)
+            require_permission(worksite_context(cur, user, worksite_id), "worksite.view")
 
     types = _entity_types(entity_types)
     async def stream():
