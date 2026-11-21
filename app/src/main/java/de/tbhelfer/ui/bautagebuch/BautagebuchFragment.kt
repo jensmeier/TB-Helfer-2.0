@@ -8141,8 +8141,11 @@ cardCurrentReport.setOnClickListener {
             lifecycleScope.launch {
                 val triple = withContext(Dispatchers.IO) {
                     val root = requireContext().getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+                    if (root == null || !root.isDirectory) {
+                        return@withContext Triple(emptySet<String>(), emptySet<String>(), emptySet<String>())
+                    }
                     val base = File(root, "TB-Helfer/${BautagebuchSpeicher.sichererName(baustelleName)}/Bautagebuch")
-                    if (base == null || !base.exists()) return@withContext Triple(emptySet<String>(), emptySet<String>(), emptySet<String>())
+                    if (!base.isDirectory) return@withContext Triple(emptySet<String>(), emptySet<String>(), emptySet<String>())
 
                     val firm = linkedSetOf<String>()
                     val role = linkedSetOf<String>()

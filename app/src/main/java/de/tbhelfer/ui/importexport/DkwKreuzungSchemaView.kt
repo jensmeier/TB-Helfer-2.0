@@ -25,13 +25,17 @@ class DkwKreuzungSchemaView @JvmOverloads constructor(
     }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.DKGRAY
-        textSize = 16f * resources.displayMetrics.scaledDensity
+        textSize = android.util.TypedValue.applyDimension(
+            android.util.TypedValue.COMPLEX_UNIT_SP, 16f, resources.displayMetrics
+        )
         textAlign = Paint.Align.CENTER
         typeface = android.graphics.Typeface.DEFAULT_BOLD
     }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.GRAY
-        textSize = 12f * resources.displayMetrics.scaledDensity
+        textSize = android.util.TypedValue.applyDimension(
+            android.util.TypedValue.COMPLEX_UNIT_SP, 12f, resources.displayMetrics
+        )
         textAlign = Paint.Align.CENTER
     }
 
