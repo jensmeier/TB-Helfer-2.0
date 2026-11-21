@@ -94,3 +94,7 @@ Neu/noch offen aus Quellcode:
 - Weitere Punkte Wetter Beginn/Ende, Foto-/Text-Portalbearbeitung, Suche, ZIP/Word/XLSX und echte Android↔Server E2E: aus FACH-1120 als Fach-/Prüfaufträge offen; keine pauschale Fehlerbestätigung.
 
 Bereits CODE GEÄNDERT/CI BESTANDEN (nicht erneut öffnen): F-01 Upload-PDF-Cleanup, F-02 Track/KM-Schreibscope, F-04 Survey-Originalimportrechte, F-06 Survey-Paginierung, AUDIT-1108-01/-02. E01–E12 real OFFEN. Neue Korrekturen nur in Server-Branch, kein NAS-SSH/Deployment/produktive Migration/Purge, keine API-Abschwächung und keine neue kostenpflichtige CI-Runneraktion. Teststatus ausdrücklich QUELLCODE GEÄNDERT → TEST/CI → NAS E2E gesondert.
+
+
+## SERVER-SEC-1121 – bereinigte Restliste
+S-05, S-02, S-07: CODE KORRIGIERT / Server-Haupt-CI BESTANDEN; echtes NAS-E2E offen. Nicht neu als unbehoben auflisten. S-01: reviewed-Compose erfordert nun explizites TB_V1_ENVIRONMENT; automatic-Compose und produktive NAS-Werte separat prüfen. OFFEN: F-03 Change-Feed-Objektmetadaten, F-05 Raw-Survey-Bereichsrechte/Sharingvertrag, S-06 privilegierter Docker-Socket/HTTP-Export, 16h-Leiterwechsel, Recovery-Gesamtabnahme, FACH-1120 und E01–E12. Ursache, Code und Tests: `uebergaben/SERVER_AUDIT_2026-11-21.md`.

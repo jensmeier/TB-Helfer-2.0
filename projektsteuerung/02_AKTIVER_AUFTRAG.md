@@ -64,3 +64,7 @@ Neu/noch offen aus Quellcode:
 - Weitere Punkte Wetter Beginn/Ende, Foto-/Text-Portalbearbeitung, Suche, ZIP/Word/XLSX und echte Android↔Server E2E: aus FACH-1120 als Fach-/Prüfaufträge offen; keine pauschale Fehlerbestätigung.
 
 Bereits CODE GEÄNDERT/CI BESTANDEN (nicht erneut öffnen): F-01 Upload-PDF-Cleanup, F-02 Track/KM-Schreibscope, F-04 Survey-Originalimportrechte, F-06 Survey-Paginierung, AUDIT-1108-01/-02. E01–E12 real OFFEN. Neue Korrekturen nur in Server-Branch, kein NAS-SSH/Deployment/produktive Migration/Purge, keine API-Abschwächung und keine neue kostenpflichtige CI-Runneraktion. Teststatus ausdrücklich QUELLCODE GEÄNDERT → TEST/CI → NAS E2E gesondert.
+
+
+## SERVER-SEC-1121 Ergebnis und Weiterarbeit
+Benutzerauftrag "alle Serverfehler auflisten, dann beheben" ist als begonnene mehrteilige Umsetzung zu behandeln: S-05/S-02/S-07 KORRIGIERT/CI BESTANDEN, S-01 Compose-Preflight vorbereitet, echte NAS-Umsetzung offen. F-03/F-05/S-06 nicht grundlos mit unsicherem Pauschalfilter oder ohne gesichertes Systembackup umbauen; fachliche Rechte-/Team-/Katalog- und Restore-Vertragsprüfung zuerst. Vollständige Liste `uebergaben/SERVER_AUDIT_2026-11-21.md`.
