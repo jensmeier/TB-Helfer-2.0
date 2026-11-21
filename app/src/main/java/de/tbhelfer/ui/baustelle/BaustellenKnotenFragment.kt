@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
  * - Zähler: Unterpunkte / Gesamt
  * - Keine "Hoch"-Navigation, kein "Baustellenbaum"-Header
  */
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class BaustellenKnotenFragment : Fragment() {
 
     private val repo = ServiceLocator.baustellenBaumRepository

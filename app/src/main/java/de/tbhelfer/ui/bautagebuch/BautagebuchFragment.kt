@@ -4060,6 +4060,7 @@ cardCurrentReport.setOnClickListener {
 
         private fun resolveOrtName(appContext: android.content.Context, lat: Double, lon: Double): String? = runCatching {
             val geocoder = android.location.Geocoder(appContext, java.util.Locale.getDefault())
+            @Suppress("DEPRECATION") // Synchronous lookup is called on IO; older Android requires it.
             val a = geocoder.getFromLocation(lat, lon, 1)?.firstOrNull()
             (a?.locality ?: a?.subAdminArea ?: a?.adminArea ?: a?.featureName)?.trim()?.takeIf { it.isNotBlank() }
         }.getOrNull()
@@ -5261,6 +5262,7 @@ cardCurrentReport.setOnClickListener {
             dialog.setCancelable(true)
 
             dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+            @Suppress("DEPRECATION") // Keep legacy full-screen BTB editor resize behavior.
             dialog.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
 
             val tvTitle = dialog.findViewById<android.widget.TextView>(R.id.tvDialogTitle)

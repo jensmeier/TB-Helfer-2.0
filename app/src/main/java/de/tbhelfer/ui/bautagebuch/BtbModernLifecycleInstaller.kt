@@ -507,8 +507,8 @@ object BtbModernLifecycleInstaller {
                                     val localRoot = ServiceLocator.worksiteBindingRepository.localMainWorksites()
                                         .firstOrNull { it.altBaustelleId == current.baustelleId }
                                     val binding = localRoot?.let { ServiceLocator.worksiteBindingRepository.bindingForLocalRoot(it.id) }
-                                    binding == null || (localRoot != null && ServiceLocator.worksiteBindingRepository.contextForLocalRoot(localRoot.id)
-                                        ?.memberRole.equals("LEAD", true))
+                                    binding == null || ServiceLocator.worksiteBindingRepository.contextForLocalRoot(localRoot.id)
+                                        ?.memberRole.equals("LEAD", true)
                                 }
                                 root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text = when (status) {
                                     BtbAbschlussStatus.ENTWURF -> "Entwurf"

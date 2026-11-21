@@ -54,10 +54,10 @@ class Export1108BTest {
                 }
             }
             assertEquals(2, ExportArchivPruefung.pruefen(original))
-            val moved = File(root, "Anderer Ordner ü/Kopie.zip"); moved.parentFile.mkdirs(); original.copyTo(moved)
+            val moved = File(root, "Anderer Ordner ü/Kopie.zip"); moved.parentFile?.mkdirs(); original.copyTo(moved)
             assertEquals(2, ExportArchivPruefung.pruefen(moved))
             // Extract and resolve against a renamed parent as well, without using the old location.
-            val extracted = File(root, "USB Kopie ü/Baustelle"); File(extracted, photo).parentFile.mkdirs(); File(extracted, photo).writeBytes(byteArrayOf(1))
+            val extracted = File(root, "USB Kopie ü/Baustelle"); File(extracted, photo).parentFile?.mkdirs(); File(extracted, photo).writeBytes(byteArrayOf(1))
             assertTrue(File(extracted, java.net.URLDecoder.decode(ExportTabelleXlsx.linkTarget(photo).replace("+", "%2B"), "UTF-8")).isFile)
         } finally { root.deleteRecursively() }
     }

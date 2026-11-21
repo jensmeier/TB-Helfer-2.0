@@ -5096,8 +5096,12 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                         WindowCompat.setDecorFitsSystemWindows(window, false)
                         val surfaceColor = MaterialColors.getColor(container, com.google.android.material.R.attr.colorSurface)
                         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-                        window.statusBarColor = surfaceColor
-                        window.navigationBarColor = surfaceColor
+                        if (android.os.Build.VERSION.SDK_INT < 35) {
+                            @Suppress("DEPRECATION") // Only applies to pre-edge-to-edge OS versions.
+                            window.statusBarColor = surfaceColor
+                            @Suppress("DEPRECATION")
+                            window.navigationBarColor = surfaceColor
+                        }
                         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(surfaceColor))
                         window.decorView.setBackgroundColor(surfaceColor)
                         window.setLayout(

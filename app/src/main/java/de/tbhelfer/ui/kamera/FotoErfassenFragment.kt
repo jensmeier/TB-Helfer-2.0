@@ -80,6 +80,7 @@ class FotoErfassenFragment : Fragment(R.layout.fragment_foto_erfassen) {
         val kmVorschlag = args.getDouble(ARG_KM, Double.NaN).takeIf { !it.isNaN() }
         // kmSuffix (-0/-1/-2) ist in der Foto-Maske nicht mehr sichtbar/auswählbar.
         // Wenn der Wert aus den Args kommt, übernehmen wir ihn – sonst Standard: 0.
+        @Suppress("DEPRECATION") // Preserve previously stored Int/Double/Float/Long/String arguments.
         val suffixIndex = when (val v = args.get(ARG_KM_SUFFIX)) {
             is Int -> v
             is Double -> v.toInt()
@@ -142,6 +143,7 @@ class FotoErfassenFragment : Fragment(R.layout.fragment_foto_erfassen) {
         val baseScrollPaddingRight = scrollView.paddingRight
         val baseScrollPaddingBottom = scrollView.paddingBottom
         scrollView.clipToPadding = false
+        @Suppress("DEPRECATION") // Keep the existing scroll fallback on older Android versions.
         requireActivity().window.setSoftInputMode(
             android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
                 android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN

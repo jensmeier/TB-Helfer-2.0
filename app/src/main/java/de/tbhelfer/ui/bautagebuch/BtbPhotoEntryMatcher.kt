@@ -15,7 +15,6 @@ object BtbPhotoEntryMatcher {
             Bildtyp.EINWEISUNG_UNTERWEISUNG -> entry.einweisungUnterweisung
             Bildtyp.BESONDERHEITEN -> entry.besonderheiten
             Bildtyp.MAENGEL_SCHAEDEN -> entry.maengelSchaeden
-            else -> return null
         }
         val firms = entry.firmen.associate { it.firmaId to it.name }
         return block.items.filter { item ->

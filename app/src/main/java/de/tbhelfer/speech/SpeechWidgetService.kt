@@ -135,7 +135,7 @@ class SpeechWidgetService:Service() {
     }
     private fun vibrate(end:Boolean) {
         runCatching {
-            val v=getSystemService(VIBRATOR_SERVICE) as Vibrator
+            val v=getSystemService(Vibrator::class.java) ?: return
             val pattern=if(end)longArrayOf(0,60,80,60) else longArrayOf(0,70)
             if(Build.VERSION.SDK_INT>=26)v.vibrate(VibrationEffect.createWaveform(pattern,-1)) else @Suppress("DEPRECATION") v.vibrate(pattern,-1)
         }

@@ -538,7 +538,6 @@ class CurrentSiteWidgetProvider : AppWidgetProvider() {
             Bildtyp.EINWEISUNG_UNTERWEISUNG -> "Einweisung"
             Bildtyp.BESONDERHEITEN -> "Besonderheit"
             Bildtyp.MAENGEL_SCHAEDEN -> "Mangel"
-            else -> ""
         }
 
         private fun shiftWindowEpochMs(datum: LocalDate, start: String?, end: String?): Pair<Long, Long> {

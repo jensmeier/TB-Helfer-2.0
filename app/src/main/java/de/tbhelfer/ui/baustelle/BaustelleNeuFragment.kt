@@ -1089,7 +1089,10 @@ class BaustelleNeuFragment : Fragment() {
                         if (parts.size == 2) {
                             edtStreckennummer.setText(parts[0])
                             val suffix = "-${parts[1]}"
-                            val pos = (spStreckenSuffix.adapter as ArrayAdapter<String>).getPosition(suffix)
+                            val suffixAdapter = spStreckenSuffix.adapter
+                            val pos = (0 until suffixAdapter.count).firstOrNull {
+                                suffixAdapter.getItem(it)?.toString() == suffix
+                            } ?: -1
                             if (pos >= 0) spStreckenSuffix.setSelection(pos)
                         }
                         edtKmVon.setText(formatKm(knoten.kmVon))

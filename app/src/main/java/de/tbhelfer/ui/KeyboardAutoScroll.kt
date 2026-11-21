@@ -70,6 +70,7 @@ object KeyboardAutoScroll {
         fun install() {
             // Fallback fuer aeltere Android-Versionen; die eigentliche Erkennung unten arbeitet
             // bewusst zusaetzlich ueber das sichtbare Fensterrechteck.
+            @Suppress("DEPRECATION") // Legacy adjustResize remains required below edge-to-edge APIs.
             window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
 
             root.viewTreeObserver.addOnGlobalFocusChangeListener { _, newFocus ->
